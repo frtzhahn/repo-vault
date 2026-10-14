@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/RepoVault.Core/RepoVault.Core.csproj" />
+    <Project Path="src/RepoVault.Desktop/RepoVault.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RepoVault.Tests/RepoVault.Tests.csproj" />
