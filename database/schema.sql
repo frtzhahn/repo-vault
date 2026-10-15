@@ -182,10 +182,10 @@ CREATE TABLE IF NOT EXISTS `Evaluations` (
   UNIQUE KEY `uq_evaluations_repo` (`RepoId`),
   KEY `idx_evaluations_faculty` (`FacultyUserId`),
   CONSTRAINT `chk_evaluations_range`
-    CHECK (`ArchitectureScore` BETWEEN 0 AND 100
-      AND `FunctionalityScore` BETWEEN 0 AND 100
-      AND `CodeQualityScore` BETWEEN 0 AND 100
-      AND `DocumentationScore` BETWEEN 0 AND 100),
+    CHECK (`ArchitectureScore` BETWEEN 0 AND 25
+      AND `FunctionalityScore` BETWEEN 0 AND 25
+      AND `CodeQualityScore` BETWEEN 0 AND 25
+      AND `DocumentationScore` BETWEEN 0 AND 25),
   CONSTRAINT `fk_evaluations_repo`
     FOREIGN KEY (`RepoId`) REFERENCES `Repositories` (`RepoId`)
     ON DELETE CASCADE ON UPDATE CASCADE,

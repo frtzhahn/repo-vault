@@ -34,16 +34,20 @@ Before cloning and building the project, make sure the following tools are insta
 ```mermaid
 kanban
   [Todo]
-    [Database Schema & CRUD Services]@{ assigned: 'Aldrin'}
+    [CRUD Services]@{ assigned: 'Aldrin'}
     [UI design]@{ assigned: 'Aldrin'}
     [Student Workspace UI implementation]@{ assigned: 'TBD'}
     [Faculty Admin & Grading UI implementation]@{ assigned: 'TBD'}
     [Testing & Seed Data]@{ assigned: 'Duites/Alciso'}
   [Opened Issues]
+    [Auth & RBAC Service]@{ assigned: 'Aldrin', ticket: '#5' }
   [In Progress]
     [Core Architecture & Git HTTP Server]@{ assigned: 'Aldrin', priority: 'High'}
   [Closed Issues]
+    [WinForms Scaffold & Line Endings]@{ assigned: 'Aldrin', ticket: '#1' }
+    [MariaDB Schema & Entity Models]@{ assigned: 'Aldrin', ticket: '#3' }
   [Done]
+    [Database Schema & Entity Models]@{ assigned: 'Aldrin'}
 
 ```
 
