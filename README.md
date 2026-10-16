@@ -34,32 +34,40 @@ Before cloning and building the project, make sure the following tools are insta
 ```mermaid
 kanban
   [Todo]
-    [CRUD Services]@{ assigned: 'Aldrin'}
-    [mock ups]@{ assigned: 'Aldrin', priority: 'High'}
-    [UI design]@{ assigned: 'Aldrin'}
-    [Student Workspace UI implementation]@{ assigned: 'TBD'}
-    [Faculty Admin & Grading UI implementation]@{ assigned: 'TBD'}
-    [Testing & Seed Data]@{ assigned: 'Duites/Alciso'}
+    [mock ups]@{ assigned: 'TBD' }
+    [Comprehensive Academic Seed Data]@{ assigned: 'Duites/Alciso' }
+    [Student Workspace UI Implementation]@{ assigned: 'TBD' }
+    [Faculty Admin & Grading UI Implementation]@{ assigned: 'TBD' }
+    [LAN Integration & Desktop Wiring]@{ assigned: 'Aldrin' }
   [Opened Issues]
-    [Seed Data Script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
-    [Student UI Screens]@{ assigned: 'TBD', ticket: '#12' }
-    [Faculty UI Screens]@{ assigned: 'TBD', ticket: '#13' }
-    [Desktop Wiring & LAN Test]@{ assigned: 'TBD', ticket: '#14' }
+    [metrics: fix trailing newline phantom blank]@{ assigned: 'Aldrin', ticket: '#17', priority: 'High' }
+    [core: bare repo file tree and blob reader]@{ assigned: 'Aldrin', ticket: '#18', priority: 'High' }
+    [core: view dtos and joined read queries]@{ assigned: 'Aldrin', ticket: '#19', priority: 'High' }
+    [git: lan ipv4 resolver and urlacl script]@{ assigned: 'Aldrin', ticket: '#20' }
+    [db: academic seed data script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
+    [db: bare git repo workspace seeder]@{ assigned: 'Aldrin', ticket: '#21' }
+    [ui: winforms screen mockups]@{ assigned: 'TBD', ticket: '#22' }
+    [ui: desktop session and xampp health check]@{ assigned: 'Aldrin', ticket: '#23' }
+    [ui: team and repo editor dialogs]@{ assigned: 'TBD', ticket: '#24' }
+    [ui: login, register, student explorer]@{ assigned: 'TBD', ticket: '#12' }
+    [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
+    [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
   [In Progress]
-    [Comprehensive Academic Seed Data]@{ assigned: 'Duites/Alciso', ticket: '#11' }
+    [Core Read Layer, File Browser & LAN Helper]@{ assigned: 'Aldrin', priority: 'High' }
   [Closed Issues]
-    [WinForms Scaffold & Line Endings]@{ assigned: 'Aldrin', ticket: '#1' }
-    [MariaDB Schema & Entity Models]@{ assigned: 'Aldrin', ticket: '#3' }
-    [Auth & RBAC Service]@{ assigned: 'Aldrin', ticket: '#5' }
-    [CRUD Services & Repo Bin]@{ assigned: 'Aldrin', ticket: '#7' }
-    [Git Smart HTTP Server]@{ assigned: 'Aldrin', ticket: '#9' }
-    [Metrics Scanner]@{ assigned: 'Aldrin', ticket: '#10' }
+    [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
+    [db: mariadb schema and entity models]@{ assigned: 'Aldrin', ticket: '#3' }
+    [core: pbkdf2 auth and rbac service]@{ assigned: 'Aldrin', ticket: '#5' }
+    [core: 6-domain crud and repo bin]@{ assigned: 'Aldrin', ticket: '#7' }
+    [git: smart http server and push queue]@{ assigned: 'Aldrin', ticket: '#9' }
+    [metrics: static loc and language scanner]@{ assigned: 'Aldrin', ticket: '#10' }
   [Done]
-    [Database Schema & Entity Models]@{ assigned: 'Aldrin'}
-    [Auth & RBAC Service]@{ assigned: 'Aldrin'}
-    [CRUD Services & Repo Bin]@{ assigned: 'Aldrin'}
-    [In-Process Git Smart HTTP Server]@{ assigned: 'Aldrin'}
-    [Deterministic Code Metrics Scanner]@{ assigned: 'Aldrin'}
+    [Project Skeleton & Desktop Scaffold]@{ assigned: 'Aldrin' }
+    [Database Schema & Entity Models]@{ assigned: 'Aldrin' }
+    [PBKDF2 Auth & RBAC Security Engine]@{ assigned: 'Aldrin' }
+    [6-Domain CRUD Services & Repo Bin Engine]@{ assigned: 'Aldrin' }
+    [In-Process Git Smart HTTP Server]@{ assigned: 'Aldrin' }
+    [Deterministic Code Metrics Scanner]@{ assigned: 'Aldrin' }
 
 ```
 
