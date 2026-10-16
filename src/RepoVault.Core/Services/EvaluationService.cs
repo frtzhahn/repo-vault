@@ -10,9 +10,9 @@ public sealed class EvaluationService
     public const int MinScore = 0;
     public const int MaxScore = 25;
 
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public EvaluationService(DbConnectionFactory db)
+    public EvaluationService(DbHelper db)
     {
         _db = db;
     }

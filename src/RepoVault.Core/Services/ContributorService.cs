@@ -7,9 +7,9 @@ namespace RepoVault.Core.Services;
 
 public sealed class ContributorService
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public ContributorService(DbConnectionFactory db)
+    public ContributorService(DbHelper db)
     {
         _db = db;
     }

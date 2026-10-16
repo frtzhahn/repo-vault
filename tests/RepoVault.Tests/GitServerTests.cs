@@ -17,7 +17,7 @@ public sealed class GitServerTests : IAsyncLifetime
 {
     private const string ZeroSha = "0000000000000000000000000000000000000000";
 
-    private readonly DbConnectionFactory _db = new();
+    private readonly DbHelper _db = new();
     private readonly List<string> _tags = new();
     private readonly List<string> _tempDirs = new();
 
@@ -27,7 +27,7 @@ public sealed class GitServerTests : IAsyncLifetime
     private User _student = new();
     private Course _course = new();
     private GitHttpServer _server = null!;
-    private RepositoryCatalogService _catalog = null!;
+    private RepoService _catalog = null!;
     private int _port;
 
     public async Task InitializeAsync()
@@ -49,7 +49,7 @@ public sealed class GitServerTests : IAsyncLifetime
         _port = FreePort();
         string root = Path.Combine(Path.GetTempPath(), "repovault-git-" + _tag);
         _tempDirs.Add(root);
-        _catalog = new RepositoryCatalogService(_db, root);
+        _catalog = new RepoService(_db, root);
 
         _server = new GitHttpServer(
             _db, auth, new RbacGuard(_db), _catalog, _port);

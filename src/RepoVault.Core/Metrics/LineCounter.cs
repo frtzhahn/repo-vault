@@ -3,7 +3,7 @@ namespace RepoVault.Core.Metrics;
 public sealed record FileMetricsResult(
     string Language, int SourceLines, int CommentLines, int BlankLines, bool IsBinary);
 
-public static class SourceLineLexer
+public static class LineCounter
 {
     private sealed record LexerConfig(string[] LineMarkers, (string Start, string End)[] Blocks);
 

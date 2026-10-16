@@ -5,9 +5,9 @@ namespace RepoVault.Core.Metrics;
 
 public sealed class CommitLogIndexer
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public CommitLogIndexer(DbConnectionFactory db)
+    public CommitLogIndexer(DbHelper db)
     {
         _db = db;
     }

@@ -2,7 +2,7 @@ using MySqlConnector;
 
 namespace RepoVault.Core.Data;
 
-public sealed class DbConnectionFactory
+public sealed class DbHelper
 {
     public const string EnvVarName = "REPOVAULT_DB_CONN";
 
@@ -11,7 +11,7 @@ public sealed class DbConnectionFactory
 
     private readonly string _connString;
 
-    public DbConnectionFactory(string? connectionString = null)
+    public DbHelper(string? connectionString = null)
     {
         if (!string.IsNullOrWhiteSpace(connectionString))
         {

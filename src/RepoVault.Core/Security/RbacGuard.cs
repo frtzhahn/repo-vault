@@ -5,9 +5,9 @@ namespace RepoVault.Core.Security;
 
 public sealed class RbacGuard
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public RbacGuard(DbConnectionFactory db)
+    public RbacGuard(DbHelper db)
     {
         _db = db;
     }

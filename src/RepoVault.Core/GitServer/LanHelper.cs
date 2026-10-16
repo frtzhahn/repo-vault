@@ -5,7 +5,7 @@ using RepoVault.Core.Services;
 
 namespace RepoVault.Core.GitServer;
 
-public static class NetworkAddressHelper
+public static class LanHelper
 {
     public static string GetPreferredLanIpv4Address()
     {
@@ -61,7 +61,7 @@ public static class NetworkAddressHelper
 
     public static string BuildCloneUrl(string repoSlug, int port = 5050, string? hostOverride = null)
     {
-        string slug = RepositoryCatalogService.NormalizeSlug(repoSlug);
+        string slug = RepoService.NormalizeSlug(repoSlug);
         string host = string.IsNullOrWhiteSpace(hostOverride)
             ? GetPreferredLanIpv4Address()
             : hostOverride.Trim();

@@ -7,9 +7,9 @@ namespace RepoVault.Core.Services;
 
 public sealed class UserService
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public UserService(DbConnectionFactory db)
+    public UserService(DbHelper db)
     {
         _db = db;
     }

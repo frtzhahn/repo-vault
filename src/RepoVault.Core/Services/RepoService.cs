@@ -6,12 +6,12 @@ using RepoVault.Core.Security;
 
 namespace RepoVault.Core.Services;
 
-public sealed class RepositoryCatalogService
+public sealed class RepoService
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
     private readonly string _repoRoot;
 
-    public RepositoryCatalogService(DbConnectionFactory db, string? repoRoot = null)
+    public RepoService(DbHelper db, string? repoRoot = null)
     {
         _db = db;
         _repoRoot = repoRoot ?? Path.Combine(

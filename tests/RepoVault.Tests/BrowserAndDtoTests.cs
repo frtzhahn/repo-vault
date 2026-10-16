@@ -13,7 +13,7 @@ namespace RepoVault.Tests;
 
 public sealed class BrowserAndDtoTests : IAsyncLifetime
 {
-    private readonly DbConnectionFactory _db = new();
+    private readonly DbHelper _db = new();
     private readonly List<string> _tags = new();
     private readonly List<string> _tempDirs = new();
 
@@ -107,7 +107,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         Assert.True(cok, cmsg);
 
         string root = TempDir("repovault-browser-", tag);
-        var catalog = new RepositoryCatalogService(_db, root);
+        var catalog = new RepoService(_db, root);
         var (rok, rmsg, repo) = await catalog.CreateRepositoryAsync(
             faculty!, course!.CourseId, slug, "Repo " + tag, null,
             DateTime.UtcNow.AddDays(7));
@@ -176,7 +176,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         var (_, _, _, repo) = await MakeDbRepoAsync(tag, "empty" + tag);
         await GitProcessRunner.InitializeBareRepositoryAsync(repo.BareRepoDiskPath);
 
-        var browser = new RepositoryBrowserService();
+        var browser = new RepoBrowser();
         List<RepoFileEntry> files = await browser.ListFilesAtHeadAsync(repo.BareRepoDiskPath);
         Assert.Empty(files);
 
@@ -207,7 +207,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         Assert.Equal(0, await GitAsync(client, "commit", "-m", "add nested files"));
         Assert.Equal(0, await GitAsync(client, "push", repo.BareRepoDiskPath, "main"));
 
-        var browser = new RepositoryBrowserService();
+        var browser = new RepoBrowser();
         List<RepoFileEntry> files = await browser.ListFilesAtHeadAsync(repo.BareRepoDiskPath);
         Assert.Equal(3, files.Count);
 
@@ -253,7 +253,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         Assert.Equal(0, await GitAsync(client, "commit", "-m", "add binary"));
         Assert.Equal(0, await GitAsync(client, "push", repo.BareRepoDiskPath, "main"));
 
-        var browser = new RepositoryBrowserService();
+        var browser = new RepoBrowser();
         List<RepoFileEntry> files = await browser.ListFilesAtHeadAsync(repo.BareRepoDiskPath);
         Assert.Equal(2, files.Count);
 
@@ -283,7 +283,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         Assert.Equal(0, await GitAsync(client, "commit", "-m", "add big file"));
         Assert.Equal(0, await GitAsync(client, "push", repo.BareRepoDiskPath, "main"));
 
-        var browser = new RepositoryBrowserService();
+        var browser = new RepoBrowser();
         RepoBlobContent full = await browser.ReadFileBlobAsync(repo.BareRepoDiskPath, "big.txt");
         Assert.False(full.IsTruncated);
         Assert.True(full.SizeBytes > 1000);
@@ -351,7 +351,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
             await cmd.ExecuteNonQueryAsync();
         }
 
-        var catalog = new RepositoryCatalogService(_db);
+        var catalog = new RepoService(_db);
         List<PushLedgerViewDto> rows = await catalog.ListPushLedgerViewAsync(repo.RepoId);
         Assert.Equal(2, rows.Count);
         Assert.True(rows[0].PushedAt >= rows[1].PushedAt);
@@ -432,7 +432,7 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
         var scanner = new CodeMetricsScanner(_db);
         await scanner.ScanRepositoryMetricsAsync(repo.RepoId, repo.BareRepoDiskPath);
 
-        var catalog = new RepositoryCatalogService(_db);
+        var catalog = new RepoService(_db);
         var commits = await catalog.ListCommitLogsAsync(repo.RepoId);
         Assert.Single(commits);
         Assert.Equal("Test", commits[0].AuthorName);
@@ -448,15 +448,15 @@ public sealed class BrowserAndDtoTests : IAsyncLifetime
     [Fact]
     public void Network_LanIpv4AndCloneUrl()
     {
-        string ip = NetworkAddressHelper.GetPreferredLanIpv4Address();
+        string ip = LanHelper.GetPreferredLanIpv4Address();
         Assert.False(string.IsNullOrWhiteSpace(ip));
         Assert.True(IPAddress.TryParse(ip, out IPAddress? parsed));
         Assert.Equal(AddressFamily.InterNetwork, parsed!.AddressFamily);
 
-        string url = NetworkAddressHelper.BuildCloneUrl("My Repo!", 5050, "192.168.1.10");
+        string url = LanHelper.BuildCloneUrl("My Repo!", 5050, "192.168.1.10");
         Assert.Equal("http://192.168.1.10:5050/repos/my-repo.git", url);
 
-        string auto = NetworkAddressHelper.BuildCloneUrl("demo-repo");
+        string auto = LanHelper.BuildCloneUrl("demo-repo");
         Assert.StartsWith("http://", auto);
         Assert.EndsWith("/repos/demo-repo.git", auto);
         Assert.Contains(":5050/", auto);

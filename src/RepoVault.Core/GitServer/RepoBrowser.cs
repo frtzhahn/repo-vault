@@ -9,7 +9,7 @@ public sealed record RepoFileEntry(
 public sealed record RepoBlobContent(
     bool IsBinary, bool IsTruncated, string TextContent, long SizeBytes);
 
-public sealed class RepositoryBrowserService
+public sealed class RepoBrowser
 {
     public async Task<List<RepoFileEntry>> ListFilesAtHeadAsync(
         string bareRepoPath, CancellationToken ct = default)

@@ -7,9 +7,9 @@ namespace RepoVault.Core.Services;
 
 public sealed class CourseService
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public CourseService(DbConnectionFactory db)
+    public CourseService(DbHelper db)
     {
         _db = db;
     }
