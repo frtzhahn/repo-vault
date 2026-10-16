@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using RepoVault.Core.Data;
+using RepoVault.Core.Metrics;
 using RepoVault.Core.Models;
 using RepoVault.Core.Security;
 using RepoVault.Core.Services;
@@ -24,6 +25,8 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
     private readonly AuthService _auth;
     private readonly RbacGuard _rbac;
     private readonly RepositoryCatalogService _catalog;
+    private readonly CommitLogIndexer _indexer;
+    private readonly CodeMetricsScanner _scanner;
     private readonly HttpListener _listener = new();
     private readonly SemaphoreSlim _pushGate = new(1, 1);
 
@@ -41,8 +44,13 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
         _auth = auth;
         _rbac = rbac;
         _catalog = catalog;
+        _indexer = new CommitLogIndexer(db);
+        _scanner = new CodeMetricsScanner(db);
         _prefix = prefix ?? $"http://127.0.0.1:{port}/";
         _listener.Prefixes.Add(_prefix);
+
+        // every accepted push refreshes commit logs and code metrics in the background
+        PushCompleted += OnPushCompleted;
     }
 
     public bool IsRunning => _running == 1;
@@ -407,6 +415,30 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
                 ClientIpAddress = ip,
                 PushedAt = DateTime.UtcNow,
             });
+        }
+    }
+
+    private void OnPushCompleted(object? sender, PushCompletedEventArgs e)
+    {
+        _ = RefreshAfterPushAsync(e);
+    }
+
+    private async Task RefreshAfterPushAsync(PushCompletedEventArgs e)
+    {
+        try
+        {
+            RepositoryRecord? repo = await _catalog.GetByIdAsync(e.RepoId).ConfigureAwait(false);
+            if (repo is null)
+            {
+                return;
+            }
+
+            await _indexer.IndexCommitsAsync(e.RepoId, repo.BareRepoDiskPath).ConfigureAwait(false);
+            await _scanner.ScanRepositoryMetricsAsync(e.RepoId, repo.BareRepoDiskPath).ConfigureAwait(false);
+        }
+        catch
+        {
+            // background refresh must never break push responses
         }
     }
 
