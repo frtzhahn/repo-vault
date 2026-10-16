@@ -203,6 +203,96 @@ public sealed class RepositoryCatalogService
         return repos;
     }
 
+    public async Task<List<CommitLogEntry>> ListCommitLogsAsync(
+        int repoId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT CommitId, RepoId, CommitHash, AuthorName, AuthorEmail, " +
+                          "CommittedAt, CommitMessage FROM CommitLogs " +
+                          "WHERE RepoId = @r ORDER BY CommittedAt DESC;";
+        cmd.Parameters.AddWithValue("@r", repoId);
+
+        var rows = new List<CommitLogEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new CommitLogEntry
+            {
+                CommitId = Convert.ToInt64(reader["CommitId"]),
+                RepoId = Convert.ToInt32(reader["RepoId"]),
+                CommitHash = reader["CommitHash"]?.ToString() ?? string.Empty,
+                AuthorName = reader["AuthorName"]?.ToString() ?? string.Empty,
+                AuthorEmail = reader["AuthorEmail"]?.ToString() ?? string.Empty,
+                CommittedAt = (DateTime)reader["CommittedAt"],
+                CommitMessage = reader["CommitMessage"]?.ToString() ?? string.Empty,
+            });
+        }
+
+        return rows;
+    }
+
+    public async Task<List<PushLedgerViewDto>> ListPushLedgerViewAsync(
+        int repoId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT p.PushId, p.RepoId, p.PusherUserId, u.Username, u.FullName, " +
+                          "p.BranchRef, p.OldCommitHash, p.NewCommitHash, p.ClientIpAddress, p.PushedAt " +
+                          "FROM PushLedger p JOIN Users u ON u.UserId = p.PusherUserId " +
+                          "WHERE p.RepoId = @r ORDER BY p.PushedAt DESC;";
+        cmd.Parameters.AddWithValue("@r", repoId);
+
+        var rows = new List<PushLedgerViewDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PushLedgerViewDto(
+                Convert.ToInt32(reader["PushId"]),
+                Convert.ToInt32(reader["RepoId"]),
+                Convert.ToInt32(reader["PusherUserId"]),
+                reader["Username"]?.ToString() ?? string.Empty,
+                reader["FullName"]?.ToString() ?? string.Empty,
+                reader["BranchRef"]?.ToString() ?? string.Empty,
+                reader["OldCommitHash"]?.ToString() ?? string.Empty,
+                reader["NewCommitHash"]?.ToString() ?? string.Empty,
+                reader.IsDBNull(reader.GetOrdinal("ClientIpAddress"))
+                    ? null : reader["ClientIpAddress"]?.ToString(),
+                (DateTime)reader["PushedAt"]));
+        }
+
+        return rows;
+    }
+
+    public async Task<List<RepositoryLanguage>> ListLanguagesAsync(
+        int repoId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT RepoId, LanguageName, FileCount, SourceLines, CommentLines, " +
+                          "BlankLines, PercentageShare FROM RepositoryLanguages " +
+                          "WHERE RepoId = @r ORDER BY SourceLines DESC;";
+        cmd.Parameters.AddWithValue("@r", repoId);
+
+        var rows = new List<RepositoryLanguage>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new RepositoryLanguage
+            {
+                RepoId = Convert.ToInt32(reader["RepoId"]),
+                LanguageName = reader["LanguageName"]?.ToString() ?? string.Empty,
+                FileCount = Convert.ToInt32(reader["FileCount"]),
+                SourceLines = Convert.ToInt32(reader["SourceLines"]),
+                CommentLines = Convert.ToInt32(reader["CommentLines"]),
+                BlankLines = Convert.ToInt32(reader["BlankLines"]),
+                PercentageShare = Convert.ToDecimal(reader["PercentageShare"]),
+            });
+        }
+
+        return rows;
+    }
+
     public async Task<(bool Ok, string Message, List<RepositoryRecord> Repos)> ListTrashedInRepoBinAsync(
         User actor, CancellationToken ct = default)
     {

@@ -127,7 +127,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.Equal("C#", got.Language);
         Assert.Equal(3, got.SourceLines);
         Assert.Equal(3, got.CommentLines);
-        Assert.Equal(4, got.BlankLines);
+        Assert.Equal(3, got.BlankLines);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.Equal("Python", got.Language);
         Assert.Equal(3, got.SourceLines);
         Assert.Equal(3, got.CommentLines);
-        Assert.Equal(2, got.BlankLines);
+        Assert.Equal(1, got.BlankLines);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.Equal("SQL", got.Language);
         Assert.Equal(1, got.SourceLines);
         Assert.Equal(3, got.CommentLines);
-        Assert.Equal(2, got.BlankLines);
+        Assert.Equal(1, got.BlankLines);
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.Equal("Markdown", got.Language);
         Assert.Equal(2, got.SourceLines);
         Assert.Equal(0, got.CommentLines);
-        Assert.Equal(2, got.BlankLines);
+        Assert.Equal(1, got.BlankLines);
     }
 
     [Fact]
@@ -211,6 +211,38 @@ public sealed class CodeMetricsTests : IAsyncLifetime
 
         FileMetricsResult plain = SourceLineLexer.ClassifyFile("Makefile", Bytes("a\n"));
         Assert.Equal("Text", plain.Language);
+    }
+
+    [Fact]
+    public void Lexer_TrailingNewline_DoesNotAddBlankLine()
+    {
+        string without = "var x = 1;\n// note\nvar y = 2;";
+        string withNewline = without + "\n";
+        string withCrlf = without + "\r\n";
+
+        FileMetricsResult a = SourceLineLexer.ClassifyFile("App.cs", Bytes(without));
+        FileMetricsResult b = SourceLineLexer.ClassifyFile("App.cs", Bytes(withNewline));
+        FileMetricsResult c = SourceLineLexer.ClassifyFile("App.cs", Bytes(withCrlf));
+
+        Assert.Equal(a.SourceLines, b.SourceLines);
+        Assert.Equal(a.CommentLines, b.CommentLines);
+        Assert.Equal(a.BlankLines, b.BlankLines);
+        Assert.Equal(a.SourceLines, c.SourceLines);
+        Assert.Equal(a.CommentLines, c.CommentLines);
+        Assert.Equal(a.BlankLines, c.BlankLines);
+        Assert.Equal(2, b.SourceLines);
+        Assert.Equal(1, b.CommentLines);
+        Assert.Equal(0, b.BlankLines);
+    }
+
+    [Fact]
+    public void Lexer_EmptyFile_ReturnsZeroes()
+    {
+        FileMetricsResult got = SourceLineLexer.ClassifyFile("empty.txt", Array.Empty<byte>());
+        Assert.False(got.IsBinary);
+        Assert.Equal(0, got.SourceLines);
+        Assert.Equal(0, got.CommentLines);
+        Assert.Equal(0, got.BlankLines);
     }
 
     private async Task<(User Faculty, Course Course, RepositoryRecord Repo)> MakeDbRepoAsync(
@@ -383,7 +415,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.Equal(3, got.TotalFiles);
         Assert.Equal(6, got.SourceLines);
         Assert.Equal(6, got.CommentLines);
-        Assert.Equal(5, got.BlankLines);
+        Assert.Equal(2, got.BlankLines);
         Assert.Equal("C#", got.PrimaryLanguage);
 
         await using (var conn2 = await _db.CreateOpenConnectionAsync())

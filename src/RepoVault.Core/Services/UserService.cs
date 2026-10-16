@@ -68,6 +68,45 @@ public sealed class UserService
         return users;
     }
 
+    public async Task<List<UserSummaryDto>> ListUserSummariesAsync(
+        UserRole? roleFilter = null, bool includeInactive = true, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+
+        string sql = "SELECT UserId, IdNumber, Username, FullName, Email, Role, IsActive, CreatedAt " +
+                     "FROM Users WHERE 1 = 1";
+        if (roleFilter.HasValue)
+        {
+            sql += " AND Role = @r";
+            cmd.Parameters.AddWithValue("@r", roleFilter.Value.ToString());
+        }
+
+        if (!includeInactive)
+        {
+            sql += " AND IsActive = 1";
+        }
+
+        cmd.CommandText = sql + " ORDER BY Username;";
+
+        var rows = new List<UserSummaryDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new UserSummaryDto(
+                Convert.ToInt32(reader["UserId"]),
+                reader["IdNumber"]?.ToString() ?? string.Empty,
+                reader["Username"]?.ToString() ?? string.Empty,
+                reader["FullName"]?.ToString() ?? string.Empty,
+                reader["Email"]?.ToString() ?? string.Empty,
+                Enum.Parse<UserRole>(reader["Role"]?.ToString() ?? "Student"),
+                Convert.ToBoolean(reader["IsActive"]),
+                (DateTime)reader["CreatedAt"]));
+        }
+
+        return rows;
+    }
+
     public async Task<(bool Ok, string Message, User? User)> UpdateProfileAsync(
         User actor, int targetUserId, string fullName, string email,
         UserRole role, bool isActive, CancellationToken ct = default)

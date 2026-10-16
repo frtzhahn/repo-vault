@@ -153,6 +153,44 @@ public sealed class DiscussionService
         return comments;
     }
 
+    public async Task<List<DiscussionCommentViewDto>> ListCommentViewsByRepoAsync(
+        int repoId, bool includeModeratedHidden, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+
+        string sql = "SELECT c.CommentId, c.RepoId, c.AuthorUserId, u.Username, u.FullName, u.Role, " +
+                     "c.CommentBody, c.IsModeratedHidden, c.CreatedAt, c.UpdatedAt " +
+                     "FROM DiscussionComments c JOIN Users u ON u.UserId = c.AuthorUserId " +
+                     "WHERE c.RepoId = @r";
+        if (!includeModeratedHidden)
+        {
+            sql += " AND c.IsModeratedHidden = 0";
+        }
+
+        cmd.CommandText = sql + " ORDER BY c.CreatedAt;";
+        cmd.Parameters.AddWithValue("@r", repoId);
+
+        var rows = new List<DiscussionCommentViewDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new DiscussionCommentViewDto(
+                Convert.ToInt32(reader["CommentId"]),
+                Convert.ToInt32(reader["RepoId"]),
+                Convert.ToInt32(reader["AuthorUserId"]),
+                reader["Username"]?.ToString() ?? string.Empty,
+                reader["FullName"]?.ToString() ?? string.Empty,
+                Enum.Parse<UserRole>(reader["Role"]?.ToString() ?? "Student"),
+                reader["CommentBody"]?.ToString() ?? string.Empty,
+                Convert.ToBoolean(reader["IsModeratedHidden"]),
+                (DateTime)reader["CreatedAt"],
+                (DateTime)reader["UpdatedAt"]));
+        }
+
+        return rows;
+    }
+
     private async Task<DiscussionComment?> GetByIdAsync(int commentId, CancellationToken ct)
     {
         await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
