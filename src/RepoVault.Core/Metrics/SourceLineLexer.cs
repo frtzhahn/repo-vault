@@ -77,6 +77,21 @@ public static class SourceLineLexer
             config = None;
         }
 
+        if (text.Length == 0)
+        {
+            return new FileMetricsResult(language, 0, 0, 0, false);
+        }
+
+        // a single trailing newline terminates the last line, it is not an extra blank line
+        if (text.EndsWith("\r\n", StringComparison.Ordinal))
+        {
+            text = text.Substring(0, text.Length - 2);
+        }
+        else if (text.EndsWith("\n", StringComparison.Ordinal))
+        {
+            text = text.Substring(0, text.Length - 1);
+        }
+
         int source = 0;
         int comments = 0;
         int blank = 0;
