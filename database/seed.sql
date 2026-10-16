@@ -1,0 +1,60 @@
+-- Repo Vault demo seed data for UCC BSCS 2A (MariaDB 10.4, XAMPP).
+-- Database: repo_vault_db. Import with: /opt/lampp/bin/mysql -u root repo_vault_db < database/seed.sql
+-- Idempotent: safe to run multiple times (INSERT IGNORE, scoped DELETE+INSERT, ON DUPLICATE KEY UPDATE).
+-- All accounts log in with password: Password123! (PBKDF2-SHA256, 100000 iterations).
+-- BareRepoDiskPath values are placeholders; DemoWorkspaceSeeder realigns them
+-- to absolute paths under the chosen seed root on first run.
+
+USE `repo_vault_db`;
+
+-- Faculty and students. Hashes below verify against Password123!.
+INSERT IGNORE INTO `Users` (IdNumber, Username, PasswordHash, PasswordSalt, Iterations, FullName, Email, Role) VALUES
+('FAC-2020-001', 'prof_santos', 'mnaaqNcCPFbXuB/aecPzx3u5LD+bJEFiGiwYXqxjzMY=', 'RphGKenRS7/3AJ991rnsYA==', 100000, 'Prof. Crisanto Santos', 'csantos@ucc.edu.ph', 'Faculty'),
+('2023-00142', 'frtzhahn', 'hqoMkaYSQ1Vvt5mF/SCN3yl0WupiP9RMI0hE+ixuRsQ=', 'dPwY0vc7pL7V2xxmDAdSYg==', 100000, 'Aldrin James Alciso', 'frtzhahn@ucc.edu.ph', 'Student'),
+('2023-00117', 'sduites', 'p5UGoniWHdnDDj8Z6uIg5lCnGA46AvRNJFjEyFPv4Hs=', 'wxwjk9cl+qc7lPepUDgP8g==', 100000, 'Stephen Duites', 'sduites@ucc.edu.ph', 'Student'),
+('2023-00098', 'epapina', 'UbXUvi5RZgdC1P78xe28xOShX57xGXowELL3oh5STlI=', '6vDIFEVJG6EsAKOqZbpuVw==', 100000, 'Exequiel Papina', 'epapina@ucc.edu.ph', 'Student'),
+('2023-00205', 'aobrence', 'Xs0Z+yFV2x+kVyE5HBwWgzXwoxmI6fu8J6t6s2UbdCs=', 'dZnLZFy8r8MNSw1qJtbxPQ==', 100000, 'Aegelyn Obrence', 'aobrence@ucc.edu.ph', 'Student'),
+('2024-00031', 'jdelacruz', 'g3m+4sSp7mgalHD8UJZG2Oi7bph4HX7lyPYkxDK0a4A=', '32r+gE7goz/dBqVyti+NWw==', 100000, 'Juan Dela Cruz', 'jdelacruz@ucc.edu.ph', 'Student');
+
+-- Courses owned by prof_santos.
+INSERT IGNORE INTO `Courses` (CourseCode, CourseTitle, Department, Semester, CreatedByFacultyId) VALUES
+('CS201', 'Data Structures and Algorithms', 'CSD', '1st Sem 2025-2026', (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
+('CS204', 'Object-Oriented Programming', 'CSD', '2nd Sem 2025-2026', (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
+('CS206', 'Applications Development and Emerging Tech', 'CSD', '2nd Sem 2025-2026', (SELECT UserId FROM Users WHERE Username = 'prof_santos'));
+
+-- Project repositories. Disk paths are seeder placeholders, see header note.
+INSERT IGNORE INTO `Repositories` (CourseId, RepoSlug, Title, Description, BareRepoDiskPath, DeadlineUtc, IsLocked, LifecycleStatus, TrashedAt) VALUES
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'micro-8', 'micro-8', '8-bit microarchitecture emulator and debugger', 'seed-repos/micro-8.git', '2026-03-15 16:00:00', 0, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'), 'randfacts', 'randfacts', 'JavaFX and SQLite random facts generator', 'seed-repos/randfacts.git', '2026-03-20 16:00:00', 0, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'lockedin', 'lockedin', 'Habit tracking and accountability platform', 'seed-repos/lockedin.git', '2026-04-10 16:00:00', 0, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'), 'web-archive', 'web-archive', 'Digital archive project in Node.js and SQLite', 'seed-repos/web-archive.git', '2025-12-05 16:00:00', 0, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'), 'trashed-calc', 'trashed-calc', 'Old calculator project for Repo Bin restore demo', 'seed-repos/trashed-calc.git', NULL, 0, 'Trashed', UTC_TIMESTAMP(6)),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'), 'archived-exam', 'archived-exam', 'Locked midterm lab submission', 'seed-repos/archived-exam.git', '2025-10-01 16:00:00', 1, 'Active', NULL);
+
+-- Student teams. Only Student-role users can be contributors.
+INSERT IGNORE INTO `RepositoryContributors` (RepoId, StudentUserId, TeamRole) VALUES
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Developer'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Documenter'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Tester'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'randfacts' AND c.CourseCode = 'CS204'), (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Lead'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'lockedin' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Lead'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Lead'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'jdelacruz'), 'Developer'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'trashed-calc' AND c.CourseCode = 'CS204'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'archived-exam' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead');
+
+-- Peer review thread on micro-8. Scoped delete keeps re-runs idempotent.
+DELETE FROM `DiscussionComments` WHERE RepoId IN (
+  SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId)
+  WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206');
+
+INSERT INTO `DiscussionComments` (RepoId, AuthorUserId, CommentBody) VALUES
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'prof_santos'), 'nice work on the fetch-decode loop. add bounds checks on memory writes before the demo.'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'thanks prof, added bounds checks and a test rom in the latest push.'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'prof_santos'), 'debugger breakpoint list looks good. document the cli flags in the readme.');
+
+-- Faculty evaluation on micro-8. TotalScore is generated (23+24+22+25=94).
+INSERT INTO `Evaluations` (RepoId, FacultyUserId, ArchitectureScore, FunctionalityScore, CodeQualityScore, DocumentationScore, CritiqueNotes) VALUES
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'prof_santos'), 23, 24, 22, 25, 'solid emulator core and clean commit history. polish the readme with usage examples and keep method sizes small.')
+ON DUPLICATE KEY UPDATE ArchitectureScore = VALUES(ArchitectureScore), FunctionalityScore = VALUES(FunctionalityScore), CodeQualityScore = VALUES(CodeQualityScore), DocumentationScore = VALUES(DocumentationScore), CritiqueNotes = VALUES(CritiqueNotes);
