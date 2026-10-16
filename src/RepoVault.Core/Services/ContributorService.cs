@@ -152,4 +152,32 @@ public sealed class ContributorService
 
         return rows;
     }
+
+    public async Task<List<ContributorViewDto>> ListContributorViewsByRepoAsync(
+        int repoId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT rc.RepoId, rc.StudentUserId, u.Username, u.FullName, u.Email, " +
+                          "rc.TeamRole, rc.AssignedAt FROM RepositoryContributors rc " +
+                          "JOIN Users u ON u.UserId = rc.StudentUserId " +
+                          "WHERE rc.RepoId = @r ORDER BY u.Username;";
+        cmd.Parameters.AddWithValue("@r", repoId);
+
+        var rows = new List<ContributorViewDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ContributorViewDto(
+                Convert.ToInt32(reader["RepoId"]),
+                Convert.ToInt32(reader["StudentUserId"]),
+                reader["Username"]?.ToString() ?? string.Empty,
+                reader["FullName"]?.ToString() ?? string.Empty,
+                reader["Email"]?.ToString() ?? string.Empty,
+                reader["TeamRole"]?.ToString() ?? string.Empty,
+                (DateTime)reader["AssignedAt"]));
+        }
+
+        return rows;
+    }
 }
