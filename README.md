@@ -35,21 +35,30 @@ Before cloning and building the project, make sure the following tools are insta
 kanban
   [Todo]
     [CRUD Services]@{ assigned: 'Aldrin'}
+    [mock ups]@{ assigned: 'Aldrin', priority: 'High'}
     [UI design]@{ assigned: 'Aldrin'}
     [Student Workspace UI implementation]@{ assigned: 'TBD'}
     [Faculty Admin & Grading UI implementation]@{ assigned: 'TBD'}
     [Testing & Seed Data]@{ assigned: 'Duites/Alciso'}
   [Opened Issues]
-    [CRUD Services & Repo Bin]@{ assigned: 'Aldrin', ticket: '#7' }
+    [Metrics Scanner]@{ assigned: 'Aldrin', ticket: '#10' }
+    [Seed Data Script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
+    [Student UI Screens]@{ assigned: 'TBD', ticket: '#12' }
+    [Faculty UI Screens]@{ assigned: 'TBD', ticket: '#13' }
+    [Desktop Wiring & LAN Test]@{ assigned: 'TBD', ticket: '#14' }
   [In Progress]
-    [Core Architecture & Git HTTP Server]@{ assigned: 'Aldrin', priority: 'High'}
+    [Deterministic Code Metrics Scanner]@{ assigned: 'Aldrin', ticket: '#10' }
   [Closed Issues]
     [WinForms Scaffold & Line Endings]@{ assigned: 'Aldrin', ticket: '#1' }
     [MariaDB Schema & Entity Models]@{ assigned: 'Aldrin', ticket: '#3' }
     [Auth & RBAC Service]@{ assigned: 'Aldrin', ticket: '#5' }
+    [CRUD Services & Repo Bin]@{ assigned: 'Aldrin', ticket: '#7' }
+    [Git Smart HTTP Server]@{ assigned: 'Aldrin', ticket: '#9' }
   [Done]
     [Database Schema & Entity Models]@{ assigned: 'Aldrin'}
     [Auth & RBAC Service]@{ assigned: 'Aldrin'}
+    [CRUD Services & Repo Bin]@{ assigned: 'Aldrin'}
+    [In-Process Git Smart HTTP Server]@{ assigned: 'Aldrin'}
 
 ```
 

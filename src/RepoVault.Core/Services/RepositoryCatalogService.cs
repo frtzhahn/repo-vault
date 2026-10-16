@@ -148,6 +148,24 @@ public sealed class RepositoryCatalogService
         return MapRepo(reader);
     }
 
+    // the git http route carries only the slug, so look it up without a course id
+    public async Task<RepositoryRecord?> GetBySlugGlobalAsync(
+        string repoSlug, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = SelectAll + " WHERE RepoSlug = @s LIMIT 1;";
+        cmd.Parameters.AddWithValue("@s", NormalizeSlug(repoSlug));
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return MapRepo(reader);
+    }
+
     public async Task<List<RepositoryRecord>> ListActiveByCourseAsync(
         int courseId, CancellationToken ct = default)
     {
