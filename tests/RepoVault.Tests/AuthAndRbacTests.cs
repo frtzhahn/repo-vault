@@ -9,7 +9,7 @@ public sealed class AuthAndRbacTests
 {
     private static string NewTag() => Guid.NewGuid().ToString("N")[..8];
 
-    private static async Task CleanupAsync(DbConnectionFactory db, string tag)
+    private static async Task CleanupAsync(DbHelper db, string tag)
     {
         await using var conn = await db.CreateOpenConnectionAsync();
         string like = "%" + tag + "%";
@@ -46,7 +46,7 @@ public sealed class AuthAndRbacTests
         return user!;
     }
 
-    private static async Task<int> CreateCourseAsync(DbConnectionFactory db, int facultyId, string tag)
+    private static async Task<int> CreateCourseAsync(DbHelper db, int facultyId, string tag)
     {
         await using var conn = await db.CreateOpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
@@ -62,7 +62,7 @@ public sealed class AuthAndRbacTests
     }
 
     private static async Task<int> CreateRepoAsync(
-        DbConnectionFactory db, int courseId, string tag, string name,
+        DbHelper db, int courseId, string tag, string name,
         bool locked, string status, DateTime? deadline)
     {
         await using var conn = await db.CreateOpenConnectionAsync();
@@ -81,7 +81,7 @@ public sealed class AuthAndRbacTests
         return Convert.ToInt32(id);
     }
 
-    private static async Task AddContributorAsync(DbConnectionFactory db, int repoId, int studentId)
+    private static async Task AddContributorAsync(DbHelper db, int repoId, int studentId)
     {
         await using var conn = await db.CreateOpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
@@ -121,7 +121,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task BasicAuth_MissingHeader_Fails()
     {
-        var auth = new AuthService(new DbConnectionFactory());
+        var auth = new AuthService(new DbHelper());
         string?[] headers = [null, "", "Bearer abc123", "Basic"];
         foreach (string? header in headers)
         {
@@ -133,7 +133,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task BasicAuth_MalformedBase64_Fails()
     {
-        var auth = new AuthService(new DbConnectionFactory());
+        var auth = new AuthService(new DbHelper());
         var (ok, _, _) = await auth.AuthenticateBasicHeaderAsync("Basic !!!notbase64!!!");
         Assert.False(ok);
     }
@@ -141,7 +141,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task BasicAuth_PasswordWithColons_Succeeds()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -160,7 +160,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task BasicAuth_CacheSurvivesUserDeletion()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         User user = await RegisterAsync(auth, tag, UserRole.Student);
@@ -190,7 +190,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Register_Success_ReturnsUser()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -212,7 +212,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Register_DuplicateUsername_Rejected()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -233,7 +233,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Register_DuplicateIdNumber_Rejected()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -254,7 +254,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Register_DuplicateEmail_Rejected()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -275,7 +275,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Register_ShortPassword_Rejected()
     {
-        var auth = new AuthService(new DbConnectionFactory());
+        var auth = new AuthService(new DbHelper());
         var (ok, msg, _) = await auth.RegisterUserAsync(
             "IDX", "ux", "short", "Name X", "ux@example.com", UserRole.Student);
         Assert.False(ok);
@@ -285,7 +285,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Authenticate_Success()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -304,7 +304,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Authenticate_WrongPassword_Fails()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -322,7 +322,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Authenticate_UnknownUser_Fails()
     {
-        var auth = new AuthService(new DbConnectionFactory());
+        var auth = new AuthService(new DbHelper());
         var (ok, _, _) = await auth.AuthenticateAsync("nobody-" + NewTag(), "whatever123");
         Assert.False(ok);
     }
@@ -330,7 +330,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Authenticate_InactiveUser_Rejected()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         string tag = NewTag();
         try
@@ -399,7 +399,7 @@ public sealed class AuthAndRbacTests
         User Faculty, User Member, User Outsider, int OpenRepo, int LockedRepo,
         int ExpiredRepo, int TrashedRepo);
 
-    private static async Task<PushFixture> SetupPushFixtureAsync(DbConnectionFactory db, AuthService auth, string tag)
+    private static async Task<PushFixture> SetupPushFixtureAsync(DbHelper db, AuthService auth, string tag)
     {
         User faculty = await RegisterAsync(auth, "F" + tag, UserRole.Faculty);
         User member = await RegisterAsync(auth, "M" + tag, UserRole.Student);
@@ -418,7 +418,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task Faculty_CanPushToOpenRepo()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -436,7 +436,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task ContributorStudent_CanPushToOpenRepo()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -454,7 +454,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task OutsiderStudent_CannotPush()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -472,7 +472,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task LockedRepo_RejectsEveryone()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -491,7 +491,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task ExpiredDeadline_RejectsPush()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -510,7 +510,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task TrashedRepo_RejectsPush()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();
@@ -529,7 +529,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task MissingRepo_ReturnsFalse()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var guard = new RbacGuard(db);
         var faculty = new User { UserId = 1, Role = UserRole.Faculty, IsActive = true };
         Assert.False(await guard.CanPushToRepositoryAsync(faculty, int.MaxValue));
@@ -538,7 +538,7 @@ public sealed class AuthAndRbacTests
     [Fact]
     public async Task InactiveUser_CannotPush()
     {
-        var db = new DbConnectionFactory();
+        var db = new DbHelper();
         var auth = new AuthService(db);
         var guard = new RbacGuard(db);
         string tag = NewTag();

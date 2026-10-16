@@ -13,7 +13,7 @@ namespace RepoVault.Tests;
 
 public sealed class CodeMetricsTests : IAsyncLifetime
 {
-    private readonly DbConnectionFactory _db = new();
+    private readonly DbHelper _db = new();
     private readonly List<string> _tags = new();
     private readonly List<string> _tempDirs = new();
     private GitHttpServer? _server;
@@ -122,7 +122,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
             "var y = 2; /* inline */ var z = 3;\n" +
             "\n";
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("Program.cs", WithBom(code));
+        FileMetricsResult got = LineCounter.ClassifyFile("Program.cs", WithBom(code));
         Assert.False(got.IsBinary);
         Assert.Equal("C#", got.Language);
         Assert.Equal(3, got.SourceLines);
@@ -142,7 +142,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
             "more docs\"\"\"\n" +
             "y = 2\n";
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("app.py", Bytes(code));
+        FileMetricsResult got = LineCounter.ClassifyFile("app.py", Bytes(code));
         Assert.False(got.IsBinary);
         Assert.Equal("Python", got.Language);
         Assert.Equal(3, got.SourceLines);
@@ -160,7 +160,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
             "line */\n" +
             "\n";
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("query.sql", Bytes(code));
+        FileMetricsResult got = LineCounter.ClassifyFile("query.sql", Bytes(code));
         Assert.Equal("SQL", got.Language);
         Assert.Equal(1, got.SourceLines);
         Assert.Equal(3, got.CommentLines);
@@ -172,7 +172,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
     {
         string code = "# Title\n\nSome text with // not a comment.\n";
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("notes.md", Bytes(code));
+        FileMetricsResult got = LineCounter.ClassifyFile("notes.md", Bytes(code));
         Assert.Equal("Markdown", got.Language);
         Assert.Equal(2, got.SourceLines);
         Assert.Equal(0, got.CommentLines);
@@ -184,7 +184,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
     {
         var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 };
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("photo.jpg", jpeg);
+        FileMetricsResult got = LineCounter.ClassifyFile("photo.jpg", jpeg);
         Assert.True(got.IsBinary);
         Assert.Equal(0, got.SourceLines);
         Assert.Equal(0, got.CommentLines);
@@ -198,18 +198,18 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Array.Fill(buf, (byte)'a');
         buf[9000] = 0;
 
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("big.txt", buf);
+        FileMetricsResult got = LineCounter.ClassifyFile("big.txt", buf);
         Assert.False(got.IsBinary);
     }
 
     [Fact]
     public void Lexer_UnknownExtension_FallsBack()
     {
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("data.xyz", Bytes("a\n"));
+        FileMetricsResult got = LineCounter.ClassifyFile("data.xyz", Bytes("a\n"));
         Assert.Equal("XYZ", got.Language);
         Assert.Equal(1, got.SourceLines);
 
-        FileMetricsResult plain = SourceLineLexer.ClassifyFile("Makefile", Bytes("a\n"));
+        FileMetricsResult plain = LineCounter.ClassifyFile("Makefile", Bytes("a\n"));
         Assert.Equal("Text", plain.Language);
     }
 
@@ -220,9 +220,9 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         string withNewline = without + "\n";
         string withCrlf = without + "\r\n";
 
-        FileMetricsResult a = SourceLineLexer.ClassifyFile("App.cs", Bytes(without));
-        FileMetricsResult b = SourceLineLexer.ClassifyFile("App.cs", Bytes(withNewline));
-        FileMetricsResult c = SourceLineLexer.ClassifyFile("App.cs", Bytes(withCrlf));
+        FileMetricsResult a = LineCounter.ClassifyFile("App.cs", Bytes(without));
+        FileMetricsResult b = LineCounter.ClassifyFile("App.cs", Bytes(withNewline));
+        FileMetricsResult c = LineCounter.ClassifyFile("App.cs", Bytes(withCrlf));
 
         Assert.Equal(a.SourceLines, b.SourceLines);
         Assert.Equal(a.CommentLines, b.CommentLines);
@@ -238,7 +238,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
     [Fact]
     public void Lexer_EmptyFile_ReturnsZeroes()
     {
-        FileMetricsResult got = SourceLineLexer.ClassifyFile("empty.txt", Array.Empty<byte>());
+        FileMetricsResult got = LineCounter.ClassifyFile("empty.txt", Array.Empty<byte>());
         Assert.False(got.IsBinary);
         Assert.Equal(0, got.SourceLines);
         Assert.Equal(0, got.CommentLines);
@@ -260,7 +260,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
         Assert.True(cok, cmsg);
 
         string root = TempDir("repovault-metrics-", tag);
-        var catalog = new RepositoryCatalogService(_db, root);
+        var catalog = new RepoService(_db, root);
         var (rok, rmsg, repo) = await catalog.CreateRepositoryAsync(
             faculty!, course!.CourseId, slug, "Repo " + tag, null,
             DateTime.UtcNow.AddDays(7));
@@ -491,7 +491,7 @@ public sealed class CodeMetricsTests : IAsyncLifetime
             faculty!, "C" + tag, "Course " + tag, "CSD", "2026-1st");
 
         string root = TempDir("repovault-wired-", tag);
-        var catalog = new RepositoryCatalogService(_db, root);
+        var catalog = new RepoService(_db, root);
         var (rok, _, repo) = await catalog.CreateRepositoryAsync(
             faculty!, course!.CourseId, "wired" + tag, "Wired", null,
             DateTime.UtcNow.AddDays(7));

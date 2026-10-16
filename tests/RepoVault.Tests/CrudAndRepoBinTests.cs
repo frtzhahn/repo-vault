@@ -7,7 +7,7 @@ namespace RepoVault.Tests;
 
 public sealed class CrudAndRepoBinTests : IAsyncLifetime
 {
-    private readonly DbConnectionFactory _db = new();
+    private readonly DbHelper _db = new();
     private readonly List<string> _tags = new();
     private readonly List<string> _tempDirs = new();
 
@@ -100,15 +100,15 @@ public sealed class CrudAndRepoBinTests : IAsyncLifetime
         return course!;
     }
 
-    private RepositoryCatalogService CatalogFor(string tag)
+    private RepoService CatalogFor(string tag)
     {
         string root = Path.Combine(Path.GetTempPath(), "repovault-tests", tag);
         _tempDirs.Add(root);
-        return new RepositoryCatalogService(_db, root);
+        return new RepoService(_db, root);
     }
 
     private async Task<RepositoryRecord> MakeRepoAsync(
-        RepositoryCatalogService catalog, User actor, int courseId, string tag, string slug = "repo")
+        RepoService catalog, User actor, int courseId, string tag, string slug = "repo")
     {
         var (ok, msg, repo) = await catalog.CreateRepositoryAsync(
             actor, courseId, slug + tag, "Repo " + tag, null, DateTime.UtcNow.AddDays(7));
