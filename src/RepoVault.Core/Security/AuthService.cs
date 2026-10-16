@@ -14,10 +14,10 @@ public sealed class AuthService
     // git sends the same basic header 2-3 times per push/clone, so cache brief auth wins
     private static readonly TimeSpan BasicCacheTtl = TimeSpan.FromSeconds(30);
 
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
     private readonly ConcurrentDictionary<string, (User User, DateTime ExpiresAt)> _basicCache = new();
 
-    public AuthService(DbConnectionFactory db)
+    public AuthService(DbHelper db)
     {
         _db = db;
     }

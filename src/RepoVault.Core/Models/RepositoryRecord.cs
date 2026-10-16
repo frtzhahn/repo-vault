@@ -19,3 +19,9 @@ public sealed class RepositoryRecord
     public string? PrimaryLanguage { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public enum LifecycleStatus
+{
+    Active,
+    Trashed
+}

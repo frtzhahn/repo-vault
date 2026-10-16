@@ -7,9 +7,9 @@ namespace RepoVault.Core.Services;
 
 public sealed class DiscussionService
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public DiscussionService(DbConnectionFactory db)
+    public DiscussionService(DbHelper db)
     {
         _db = db;
     }

@@ -10,9 +10,9 @@ public sealed record RepositoryMetricsResult(
 
 public sealed class CodeMetricsScanner
 {
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
 
-    public CodeMetricsScanner(DbConnectionFactory db)
+    public CodeMetricsScanner(DbHelper db)
     {
         _db = db;
     }
@@ -102,7 +102,7 @@ public sealed class CodeMetricsScanner
             byte[] content = await ReadExactAsync(stdout, size, ct).ConfigureAwait(false);
             await ReadExactAsync(stdout, 1, ct).ConfigureAwait(false);
 
-            FileMetricsResult metrics = SourceLineLexer.ClassifyFile(blobs[i].Path, content);
+            FileMetricsResult metrics = LineCounter.ClassifyFile(blobs[i].Path, content);
             if (!metrics.IsBinary)
             {
                 files.Add(metrics);

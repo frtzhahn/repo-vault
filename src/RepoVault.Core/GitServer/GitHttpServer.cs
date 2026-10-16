@@ -11,6 +11,17 @@ using RepoVault.Core.Services;
 
 namespace RepoVault.Core.GitServer;
 
+public sealed class PushCompletedEventArgs : EventArgs
+{
+    public int RepoId { get; init; }
+    public int PusherUserId { get; init; }
+    public string BranchRef { get; init; } = string.Empty;
+    public string OldCommitHash { get; init; } = string.Empty;
+    public string NewCommitHash { get; init; } = string.Empty;
+    public string? ClientIpAddress { get; init; }
+    public DateTime PushedAt { get; init; }
+}
+
 public sealed class GitHttpServer : IAsyncDisposable, IDisposable
 {
     private static readonly Regex Route = new(
@@ -21,10 +32,10 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
     private const string ReceiveAdvertise = "001f# service=git-receive-pack\n0000";
     private const string UploadAdvertise = "001e# service=git-upload-pack\n0000";
 
-    private readonly DbConnectionFactory _db;
+    private readonly DbHelper _db;
     private readonly AuthService _auth;
     private readonly RbacGuard _rbac;
-    private readonly RepositoryCatalogService _catalog;
+    private readonly RepoService _catalog;
     private readonly CommitLogIndexer _indexer;
     private readonly CodeMetricsScanner _scanner;
     private readonly HttpListener _listener = new();
@@ -37,8 +48,8 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
     private bool _disposed;
 
     public GitHttpServer(
-        DbConnectionFactory db, AuthService auth, RbacGuard rbac,
-        RepositoryCatalogService catalog, int port = 5050, string? prefix = null)
+        DbHelper db, AuthService auth, RbacGuard rbac,
+        RepoService catalog, int port = 5050, string? prefix = null)
     {
         _db = db;
         _auth = auth;
