@@ -1,16 +1,32 @@
+using RepoVault.Desktop.AppState;
+using RepoVault.Desktop.Forms;
+
 namespace RepoVault.Desktop;
 
 static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
     [STAThread]
     static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form1());
-    }    
+
+        var session = new AppSession();
+
+        // show login, then the shell, and loop back to login when the user logs out
+        while (true)
+        {
+            using var login = new LoginForm(session);
+            if (login.ShowDialog() != DialogResult.OK)
+            {
+                break;
+            }
+
+            using var main = new MainForm(session);
+            Application.Run(main);
+            if (!main.LogoutRequested)
+            {
+                break;
+            }
+        }
+    }
 }
