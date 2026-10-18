@@ -45,6 +45,7 @@ kanban
     [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
   [In Progress]
     [LAN Integration & Desktop Wiring]@{ assigned: 'Aldrin' }
+    [WinForms Auth & Main Shell]@{ assigned: 'Aldrin' }
     [Student Workspace UI Implementation]@{ assigned: 'TBD' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
