@@ -35,12 +35,8 @@ Before cloning and building the project, make sure the following tools are insta
 kanban
   [Todo]
     [mock ups]@{ assigned: 'TBD' }
-    [Student Workspace UI Implementation]@{ assigned: 'TBD' }
     [Faculty Admin & Grading UI Implementation]@{ assigned: 'TBD' }
-    [LAN Integration & Desktop Wiring]@{ assigned: 'Aldrin' }
   [Opened Issues]
-    [db: academic seed data script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
-    [db: bare git repo workspace seeder]@{ assigned: 'Aldrin', ticket: '#21' }
     [ui: winforms screen mockups]@{ assigned: 'TBD', ticket: '#22' }
     [ui: desktop session and xampp health check]@{ assigned: 'Aldrin', ticket: '#23' }
     [ui: team and repo editor dialogs]@{ assigned: 'TBD', ticket: '#24' }
@@ -48,7 +44,8 @@ kanban
     [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
     [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
   [In Progress]
-    [Comprehensive Academic Seed Data]@{ assigned: 'Duites/Alciso' }
+    [LAN Integration & Desktop Wiring]@{ assigned: 'Aldrin' }
+    [Student Workspace UI Implementation]@{ assigned: 'TBD' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
     [db: mariadb schema and entity models]@{ assigned: 'Aldrin', ticket: '#3' }
@@ -60,6 +57,8 @@ kanban
     [core: bare repo file tree and blob reader]@{ assigned: 'Aldrin', ticket: '#18' }
     [core: view dtos and joined read queries]@{ assigned: 'Aldrin', ticket: '#19' }
     [git: lan ipv4 resolver and urlacl script]@{ assigned: 'Aldrin', ticket: '#20' }
+    [db: academic seed data script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
+    [db: bare git repo workspace seeder]@{ assigned: 'Aldrin', ticket: '#21' }
   [Done]
     [Project Skeleton & Desktop Scaffold]@{ assigned: 'Aldrin' }
     [Database Schema & Entity Models]@{ assigned: 'Aldrin' }
@@ -68,6 +67,7 @@ kanban
     [In-Process Git Smart HTTP Server]@{ assigned: 'Aldrin' }
     [Deterministic Code Metrics Scanner]@{ assigned: 'Aldrin' }
     [Core Read Layer, File Browser & LAN Helper]@{ assigned: 'Aldrin' }
+    [Database Seed Data & Demo Workspace Seeder]@{ assigned: 'Aldrin' }
 
 ```
 
