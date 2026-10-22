@@ -40,6 +40,7 @@ public sealed class AppSession
     public DemoWorkspaceSeeder Seeder { get; }
 
     public UserSummaryDto? CurrentUser { get; private set; }
+    public User? CurrentActor { get; private set; }
     public bool IsAuthenticated => CurrentUser is not null;
     public GitHttpServer? RunningServer { get; set; }
     public int ServerPort { get; set; } = 5050;
@@ -47,6 +48,7 @@ public sealed class AppSession
 
     public void SetCurrentUser(User user)
     {
+        CurrentActor = user;
         CurrentUser = new UserSummaryDto(
             user.UserId, user.IdNumber, user.Username, user.FullName,
             user.Email, user.Role, user.IsActive, user.CreatedAt);
@@ -55,6 +57,7 @@ public sealed class AppSession
     public void Reset()
     {
         CurrentUser = null;
+        CurrentActor = null;
         RunningServer = null;
     }
 }

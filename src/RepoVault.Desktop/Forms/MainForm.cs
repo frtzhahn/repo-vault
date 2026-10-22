@@ -5,12 +5,14 @@ using RepoVault.Core.Data;
 using RepoVault.Core.GitServer;
 using RepoVault.Core.Models;
 using RepoVault.Desktop.AppState;
+using RepoVault.Desktop.Views.Student;
 
 namespace RepoVault.Desktop.Forms;
 
 public partial class MainForm : Form
 {
     private readonly AppSession _session;
+    private StudentShellView? _studentShell;
     private int _pushCount;
 
     public MainForm(AppSession session)
@@ -26,11 +28,19 @@ public partial class MainForm : Form
             lblIdentity.Text = $"{user.Username} - {user.Role} - {user.IdNumber}";
             lblRoleHint.Text = user.Role == UserRole.Faculty
                 ? "faculty workspace: course management, grading queue, and repo bin will dock here in phase 2."
-                : "student workspace: your teams, repositories, commits, and evaluations will dock here in phase 2.";
+                : "student workspace: repositories, files, commits, discussions, and evaluations.";
         }
 
         lblStats.Text = $"storage: {session.ReposDirectory}  |  server port: {session.ServerPort}";
         UpdateServerUi();
+
+        if (user is not null && user.Role == UserRole.Student)
+        {
+            _studentShell = new StudentShellView(_session) { Dock = DockStyle.Fill };
+            pnlWorkspace.Controls.Clear();
+            flpWelcome.Dispose();
+            pnlWorkspace.Controls.Add(_studentShell);
+        }
     }
 
     public bool LogoutRequested { get; private set; }
@@ -214,6 +224,11 @@ public partial class MainForm : Form
         {
             SeederResult result = await _session.Seeder.SeedAllAsync(_session.ReposDirectory);
             string summary = $"seeded {result.ReposSeeded} repositories and indexed {result.CommitsIndexed} new commits.";
+            if (_studentShell is not null)
+            {
+                await _studentShell.RefreshActiveAsync();
+            }
+
             ShowNotification(summary);
             MessageBox.Show(this,
                 summary + Environment.NewLine + Environment.NewLine +
