@@ -27,6 +27,16 @@ public partial class MainForm : Form
             lblRoleHint.Text = user.Role == UserRole.Faculty
                 ? "faculty workspace: course management, grading queue, and repo bin will dock here in phase 2."
                 : "student workspace: your teams, repositories, commits, and evaluations will dock here in phase 2.";
+
+            if (user.Role == UserRole.Student)
+            {
+                pnlWorkspace.Controls.Clear();
+                var studentWorkspace = new Controls.StudentWorkspaceControl(_session)
+                {
+                    Dock = DockStyle.Fill
+                };
+                pnlWorkspace.Controls.Add(studentWorkspace);
+            }
         }
 
         lblStats.Text = $"storage: {session.ReposDirectory}  |  server port: {session.ServerPort}";
@@ -146,6 +156,11 @@ public partial class MainForm : Form
                 _pushCount++;
                 lblPushCounter.Text = "Pushes Received: " + _pushCount;
                 ShowNotification($"push to repo #{e.RepoId} on {e.BranchRef} received at {e.PushedAt.ToLocalTime():HH:mm:ss}.");
+
+                if (pnlWorkspace.Controls.OfType<Controls.StudentWorkspaceControl>().FirstOrDefault() is { } sw)
+                {
+                    sw.HandlePushNotification(e.RepoId);
+                }
             }));
         }
         catch (InvalidOperationException)
@@ -219,6 +234,11 @@ public partial class MainForm : Form
                 summary + Environment.NewLine + Environment.NewLine +
                 "storage: " + _session.ReposDirectory,
                 "Seed Workspaces", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            if (pnlWorkspace.Controls.OfType<Controls.StudentWorkspaceControl>().FirstOrDefault() is { } sw)
+            {
+                await sw.RefreshDataAsync();
+            }
         }
         catch (Exception ex)
         {

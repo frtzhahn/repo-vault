@@ -52,6 +52,26 @@ public sealed class AppSession
             user.Email, user.Role, user.IsActive, user.CreatedAt);
     }
 
+    public User? GetCurrentUserEntity()
+    {
+        if (CurrentUser is null)
+        {
+            return null;
+        }
+
+        return new User
+        {
+            UserId = CurrentUser.UserId,
+            IdNumber = CurrentUser.IdNumber,
+            Username = CurrentUser.Username,
+            FullName = CurrentUser.FullName,
+            Email = CurrentUser.Email,
+            Role = CurrentUser.Role,
+            IsActive = CurrentUser.IsActive,
+            CreatedAt = CurrentUser.CreatedAt,
+        };
+    }
+
     public void Reset()
     {
         CurrentUser = null;
