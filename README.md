@@ -35,7 +35,6 @@ Before cloning and building the project, make sure the following tools are insta
 kanban
   [Todo]
     [mock ups]@{ assigned: 'TBD' }
-    [Faculty Admin & Grading UI Implementation]@{ assigned: 'TBD' }
   [Opened Issues]
     [ui: winforms screen mockups]@{ assigned: 'TBD', ticket: '#22' }
     [ui: desktop session and xampp health check]@{ assigned: 'Aldrin', ticket: '#23' }
@@ -43,9 +42,9 @@ kanban
     [ui: login, register, student explorer]@{ assigned: 'TBD', ticket: '#12' }
     [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
     [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
-    [desktop: student workspace control and coding interface]@{ assigned: 'Aldrin', ticket: '#33' }
+    [desktop: faculty workspace, rubric grading, and repo bin]@{ assigned: 'Aldrin', ticket: '#35' }
   [In Progress]
-    [Student Workspace UI Implementation]@{ assigned: 'Aldrin' }
+    [Faculty Admin & Grading UI Implementation]@{ assigned: 'Aldrin' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
     [db: mariadb schema and entity models]@{ assigned: 'Aldrin', ticket: '#3' }
@@ -60,6 +59,7 @@ kanban
     [db: academic seed data script]@{ assigned: 'Duites/Alciso', ticket: '#11' }
     [db: bare git repo workspace seeder]@{ assigned: 'Aldrin', ticket: '#21' }
     [core: classroom tasks and access tickets]@{ assigned: 'Aldrin', ticket: '#31' }
+    [desktop: student workspace control and coding interface]@{ assigned: 'Aldrin', ticket: '#33' }
   [Done]
     [Project Skeleton & Desktop Scaffold]@{ assigned: 'Aldrin' }
     [Database Schema & Entity Models]@{ assigned: 'Aldrin' }
@@ -71,6 +71,7 @@ kanban
     [Database Seed Data & Demo Workspace Seeder]@{ assigned: 'Aldrin' }
     [WinForms Auth & Main Shell]@{ assigned: 'Aldrin' }
     [Classroom Coding Tasks & Access Tickets]@{ assigned: 'Aldrin' }
+    [Student Workspace UI Implementation]@{ assigned: 'Aldrin' }
 ```
 
 ## Contribution Guide for Members

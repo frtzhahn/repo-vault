@@ -351,6 +351,38 @@ public sealed class ContributorService
         return rows;
     }
 
+    public async Task<List<ContributorViewDto>> ListTicketsByCourseAsync(
+        int courseId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT rc.RepoId, rc.StudentUserId, u.Username, u.FullName, u.Email, " +
+                          "rc.TeamRole, rc.AssignedAt, rc.AccessLevel, rc.ApprovalStatus " +
+                          "FROM RepositoryContributors rc " +
+                          "JOIN Users u ON u.UserId = rc.StudentUserId " +
+                          "JOIN Repositories r ON r.RepoId = rc.RepoId " +
+                          "WHERE r.CourseId = @c ORDER BY rc.AssignedAt DESC;";
+        cmd.Parameters.AddWithValue("@c", courseId);
+
+        var rows = new List<ContributorViewDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ContributorViewDto(
+                Convert.ToInt32(reader["RepoId"]),
+                Convert.ToInt32(reader["StudentUserId"]),
+                reader["Username"]?.ToString() ?? string.Empty,
+                reader["FullName"]?.ToString() ?? string.Empty,
+                reader["Email"]?.ToString() ?? string.Empty,
+                reader["TeamRole"]?.ToString() ?? string.Empty,
+                (DateTime)reader["AssignedAt"],
+                Enum.Parse<AccessLevel>(reader["AccessLevel"]?.ToString() ?? "GroupCollaborator"),
+                Enum.Parse<TicketApprovalStatus>(reader["ApprovalStatus"]?.ToString() ?? "Approved")));
+        }
+
+        return rows;
+    }
+
     private async Task<(bool Ok, string Message)> AssignContributorInternalAsync(
         User actor, int repoId, int studentUserId, string teamRole,
         AccessLevel accessLevel, TicketApprovalStatus approvalStatus,

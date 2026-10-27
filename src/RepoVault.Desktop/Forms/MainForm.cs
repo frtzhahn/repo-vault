@@ -37,6 +37,15 @@ public partial class MainForm : Form
                 };
                 pnlWorkspace.Controls.Add(studentWorkspace);
             }
+            else if (user.Role == UserRole.Faculty)
+            {
+                pnlWorkspace.Controls.Clear();
+                var facultyWorkspace = new Controls.FacultyWorkspaceControl(_session)
+                {
+                    Dock = DockStyle.Fill
+                };
+                pnlWorkspace.Controls.Add(facultyWorkspace);
+            }
         }
 
         lblStats.Text = $"storage: {session.ReposDirectory}  |  server port: {session.ServerPort}";
@@ -161,6 +170,10 @@ public partial class MainForm : Form
                 {
                     sw.HandlePushNotification(e.RepoId);
                 }
+                else if (pnlWorkspace.Controls.OfType<Controls.FacultyWorkspaceControl>().FirstOrDefault() is { } fw)
+                {
+                    fw.HandlePushNotification(e.RepoId);
+                }
             }));
         }
         catch (InvalidOperationException)
@@ -238,6 +251,10 @@ public partial class MainForm : Form
             if (pnlWorkspace.Controls.OfType<Controls.StudentWorkspaceControl>().FirstOrDefault() is { } sw)
             {
                 await sw.RefreshDataAsync();
+            }
+            else if (pnlWorkspace.Controls.OfType<Controls.FacultyWorkspaceControl>().FirstOrDefault() is { } fw)
+            {
+                await fw.RefreshDataAsync();
             }
         }
         catch (Exception ex)
