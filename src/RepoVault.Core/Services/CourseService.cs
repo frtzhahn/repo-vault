@@ -191,6 +191,127 @@ public sealed class CourseService
         return (true, "ok");
     }
 
+    public async Task<(bool Ok, string Message, CodingTask? Task)> CreateCodingTaskAsync(
+        User actor, int courseId, string title, string? instructions,
+        string starterTemplate = "csharp", DateTime? deadlineUtc = null,
+        bool allowGroupWork = false, int maxGroupSize = 1, CancellationToken ct = default)
+    {
+        if (!RbacGuard.CanManageCourses(actor))
+        {
+            return (false, "only faculty can create coding tasks.", null);
+        }
+
+        title = title.Trim();
+        starterTemplate = string.IsNullOrWhiteSpace(starterTemplate) ? "csharp" : starterTemplate.Trim();
+        if (title.Length == 0)
+        {
+            return (false, "task title is required.", null);
+        }
+
+        if (maxGroupSize < 1)
+        {
+            maxGroupSize = 1;
+        }
+
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO CodingTasks (CourseId, Title, Instructions, StarterTemplate, " +
+                          "DeadlineUtc, AllowGroupWork, MaxGroupSize, CreatedByFacultyId, CreatedAt) " +
+                          "VALUES (@c, @t, @i, @s, @dl, @g, @m, @f, @now);";
+        cmd.Parameters.AddWithValue("@c", courseId);
+        cmd.Parameters.AddWithValue("@t", title);
+        cmd.Parameters.AddWithValue("@i", (object?)instructions?.Trim() ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@s", starterTemplate);
+        cmd.Parameters.AddWithValue("@dl", (object?)deadlineUtc ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@g", allowGroupWork ? 1 : 0);
+        cmd.Parameters.AddWithValue("@m", maxGroupSize);
+        cmd.Parameters.AddWithValue("@f", actor.UserId);
+        cmd.Parameters.AddWithValue("@now", DateTime.UtcNow);
+
+        try
+        {
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (MySqlException ex) when (ex.Number == 1452)
+        {
+            return (false, "course not found.", null);
+        }
+
+        var created = new CodingTask
+        {
+            TaskId = (int)cmd.LastInsertedId,
+            CourseId = courseId,
+            Title = title,
+            Instructions = instructions?.Trim(),
+            StarterTemplate = starterTemplate,
+            DeadlineUtc = deadlineUtc,
+            AllowGroupWork = allowGroupWork,
+            MaxGroupSize = maxGroupSize,
+            CreatedByFacultyId = actor.UserId,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        return (true, "ok", created);
+    }
+
+    public async Task<List<CodingTask>> ListTasksByCourseAsync(
+        int courseId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT TaskId, CourseId, Title, Instructions, StarterTemplate, " +
+                          "DeadlineUtc, AllowGroupWork, MaxGroupSize, CreatedByFacultyId, CreatedAt " +
+                          "FROM CodingTasks WHERE CourseId = @c ORDER BY CreatedAt DESC;";
+        cmd.Parameters.AddWithValue("@c", courseId);
+
+        var list = new List<CodingTask>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(MapCodingTask(reader));
+        }
+
+        return list;
+    }
+
+    public async Task<CodingTask?> GetTaskByIdAsync(
+        int taskId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT TaskId, CourseId, Title, Instructions, StarterTemplate, " +
+                          "DeadlineUtc, AllowGroupWork, MaxGroupSize, CreatedByFacultyId, CreatedAt " +
+                          "FROM CodingTasks WHERE TaskId = @id LIMIT 1;";
+        cmd.Parameters.AddWithValue("@id", taskId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return MapCodingTask(reader);
+    }
+
+    internal static CodingTask MapCodingTask(MySqlDataReader reader)
+    {
+        return new CodingTask
+        {
+            TaskId = Convert.ToInt32(reader["TaskId"]),
+            CourseId = Convert.ToInt32(reader["CourseId"]),
+            Title = reader["Title"]?.ToString() ?? string.Empty,
+            Instructions = reader.IsDBNull(reader.GetOrdinal("Instructions"))
+                ? null : reader["Instructions"]?.ToString(),
+            StarterTemplate = reader["StarterTemplate"]?.ToString() ?? "csharp",
+            DeadlineUtc = reader.IsDBNull(reader.GetOrdinal("DeadlineUtc"))
+                ? null : (DateTime?)reader["DeadlineUtc"],
+            AllowGroupWork = Convert.ToBoolean(reader["AllowGroupWork"]),
+            MaxGroupSize = Convert.ToInt32(reader["MaxGroupSize"]),
+            CreatedByFacultyId = Convert.ToInt32(reader["CreatedByFacultyId"]),
+            CreatedAt = (DateTime)reader["CreatedAt"],
+        };
+    }
+
     internal static Course MapCourse(MySqlDataReader reader)
     {
         return new Course

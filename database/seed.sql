@@ -22,27 +22,75 @@ INSERT IGNORE INTO `Courses` (CourseCode, CourseTitle, Department, Semester, Cre
 ('CS204', 'Object-Oriented Programming', 'CSD', '2nd Sem 2025-2026', (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
 ('CS206', 'Applications Development and Emerging Tech', 'CSD', '2nd Sem 2025-2026', (SELECT UserId FROM Users WHERE Username = 'prof_santos'));
 
--- Project repositories. Disk paths are seeder placeholders, see header note.
-INSERT IGNORE INTO `Repositories` (CourseId, RepoSlug, Title, Description, BareRepoDiskPath, DeadlineUtc, IsLocked, LifecycleStatus, TrashedAt) VALUES
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'micro-8', 'micro-8', '8-bit microarchitecture emulator and debugger', 'seed-repos/micro-8.git', '2026-03-15 16:00:00', 0, 'Active', NULL),
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'), 'randfacts', 'randfacts', 'JavaFX and SQLite random facts generator', 'seed-repos/randfacts.git', '2026-03-20 16:00:00', 0, 'Active', NULL),
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'lockedin', 'lockedin', 'Habit tracking and accountability platform', 'seed-repos/lockedin.git', '2026-04-10 16:00:00', 0, 'Active', NULL),
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'), 'web-archive', 'web-archive', 'Digital archive project in Node.js and SQLite', 'seed-repos/web-archive.git', '2025-12-05 16:00:00', 0, 'Active', NULL),
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'), 'trashed-calc', 'trashed-calc', 'Old calculator project for Repo Bin restore demo', 'seed-repos/trashed-calc.git', NULL, 0, 'Trashed', UTC_TIMESTAMP(6)),
-((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'), 'archived-exam', 'archived-exam', 'Locked midterm lab submission', 'seed-repos/archived-exam.git', '2025-10-01 16:00:00', 1, 'Active', NULL);
+-- Coding tasks posted under courses by prof_santos.
+INSERT IGNORE INTO `CodingTasks` (CourseId, Title, Instructions, StarterTemplate, DeadlineUtc, AllowGroupWork, MaxGroupSize, CreatedByFacultyId) VALUES
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'), 'Midterm Lab: Linked Lists', 'Implement generic linked list data structures with insert, delete, and reverse operations.', 'csharp', '2025-10-01 16:00:00', 0, 1, (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'), 'Lab 3: JavaFX Fact Generator', 'Build an OOP GUI application that loads random trivia from a local database.', 'java', '2026-03-20 16:00:00', 0, 1, (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'Term Project: 8-Bit Architecture Emulator', 'Develop an interactive microarchitecture emulator with instruction decoding and registers.', 'csharp', '2026-03-15 16:00:00', 1, 4, (SELECT UserId FROM Users WHERE Username = 'prof_santos')),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'), 'Final Project: Habit Accountability Tracker', 'Full stack productivity and accountability tracker with LAN synchronization.', 'csharp', '2026-04-10 16:00:00', 1, 3, (SELECT UserId FROM Users WHERE Username = 'prof_santos'));
 
--- Student teams. Only Student-role users can be contributors.
-INSERT IGNORE INTO `RepositoryContributors` (RepoId, StudentUserId, TeamRole) VALUES
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Developer'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Documenter'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Tester'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'randfacts' AND c.CourseCode = 'CS204'), (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Lead'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'lockedin' AND c.CourseCode = 'CS206'), (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Lead'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Lead'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'jdelacruz'), 'Developer'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'trashed-calc' AND c.CourseCode = 'CS204'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead'),
-((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'archived-exam' AND c.CourseCode = 'CS201'), (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead');
+-- Project repositories. Disk paths are seeder placeholders, see header note.
+INSERT IGNORE INTO `Repositories` (CourseId, OwnerStudentId, TaskId, RepoSlug, Title, Description, BareRepoDiskPath, DeadlineUtc, IsLocked, IsSubmitted, SubmittedAt, LifecycleStatus, TrashedAt) VALUES
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'),
+ (SELECT TaskId FROM CodingTasks WHERE Title LIKE 'Term Project%' LIMIT 1),
+ 'micro-8', 'micro-8', '8-bit microarchitecture emulator and debugger', 'seed-repos/micro-8.git', '2026-03-15 16:00:00', 0, 0, NULL, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'sduites'),
+ (SELECT TaskId FROM CodingTasks WHERE Title LIKE 'Lab 3%' LIMIT 1),
+ 'randfacts', 'randfacts', 'JavaFX and SQLite random facts generator', 'seed-repos/randfacts.git', '2026-03-20 16:00:00', 0, 0, NULL, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS206' AND Semester = '2nd Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'epapina'),
+ (SELECT TaskId FROM CodingTasks WHERE Title LIKE 'Final Project%' LIMIT 1),
+ 'lockedin', 'lockedin', 'Habit tracking and accountability platform', 'seed-repos/lockedin.git', '2026-04-10 16:00:00', 0, 0, NULL, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'aobrence'),
+ NULL,
+ 'web-archive', 'web-archive', 'Digital archive project in Node.js and SQLite', 'seed-repos/web-archive.git', '2025-12-05 16:00:00', 0, 0, NULL, 'Active', NULL),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS204' AND Semester = '2nd Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'),
+ NULL,
+ 'trashed-calc', 'trashed-calc', 'Old calculator project for Repo Bin restore demo', 'seed-repos/trashed-calc.git', NULL, 0, 0, NULL, 'Trashed', UTC_TIMESTAMP(6)),
+((SELECT CourseId FROM Courses WHERE CourseCode = 'CS201' AND Semester = '1st Sem 2025-2026'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'),
+ (SELECT TaskId FROM CodingTasks WHERE Title LIKE 'Midterm Lab%' LIMIT 1),
+ 'archived-exam', 'archived-exam', 'Locked midterm lab submission', 'seed-repos/archived-exam.git', '2025-10-01 16:00:00', 1, 1, '2025-09-30 15:30:00', 'Active', NULL);
+
+-- Student teams and collaborators.
+INSERT IGNORE INTO `RepositoryContributors` (RepoId, StudentUserId, TeamRole, AccessLevel, ApprovalStatus, ApprovedByFacultyId, ApprovedAt) VALUES
+-- micro-8: lead owner, approved groupmates, pending ticket for aobrence, peer viewer for jdelacruz
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead', 'Owner', 'Approved', NULL, NULL),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Developer', 'GroupCollaborator', 'Approved', (SELECT UserId FROM Users WHERE Username = 'prof_santos'), '2026-01-20 10:00:00'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Documenter', 'GroupCollaborator', 'Approved', (SELECT UserId FROM Users WHERE Username = 'prof_santos'), '2026-01-20 10:00:00'),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Tester', 'GroupCollaborator', 'Pending', NULL, NULL),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'micro-8' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'jdelacruz'), 'Peer Reviewer', 'PeerViewer', 'Approved', NULL, NULL),
+
+-- randfacts
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'randfacts' AND c.CourseCode = 'CS204'),
+ (SELECT UserId FROM Users WHERE Username = 'sduites'), 'Lead', 'Owner', 'Approved', NULL, NULL),
+
+-- lockedin
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'lockedin' AND c.CourseCode = 'CS206'),
+ (SELECT UserId FROM Users WHERE Username = 'epapina'), 'Lead', 'Owner', 'Approved', NULL, NULL),
+
+-- web-archive
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'),
+ (SELECT UserId FROM Users WHERE Username = 'aobrence'), 'Lead', 'Owner', 'Approved', NULL, NULL),
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'web-archive' AND c.CourseCode = 'CS201'),
+ (SELECT UserId FROM Users WHERE Username = 'jdelacruz'), 'Developer', 'GroupCollaborator', 'Approved', (SELECT UserId FROM Users WHERE Username = 'prof_santos'), '2025-11-01 10:00:00'),
+
+-- trashed-calc
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'trashed-calc' AND c.CourseCode = 'CS204'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead', 'Owner', 'Approved', NULL, NULL),
+
+-- archived-exam
+((SELECT r.RepoId FROM Repositories r JOIN Courses c USING (CourseId) WHERE r.RepoSlug = 'archived-exam' AND c.CourseCode = 'CS201'),
+ (SELECT UserId FROM Users WHERE Username = 'frtzhahn'), 'Lead', 'Owner', 'Approved', NULL, NULL);
 
 -- Peer review thread on micro-8. Scoped delete keeps re-runs idempotent.
 DELETE FROM `DiscussionComments` WHERE RepoId IN (

@@ -46,16 +46,43 @@ CREATE TABLE IF NOT EXISTS `Courses` (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- CodingTasks: classroom assignments posted under courses by faculty.
+CREATE TABLE IF NOT EXISTS `CodingTasks` (
+  `TaskId` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `CourseId` INT UNSIGNED NOT NULL,
+  `Title` VARCHAR(255) NOT NULL,
+  `Instructions` TEXT NULL,
+  `StarterTemplate` VARCHAR(50) NOT NULL DEFAULT 'csharp',
+  `DeadlineUtc` DATETIME(6) NULL,
+  `AllowGroupWork` TINYINT(1) NOT NULL DEFAULT 0,
+  `MaxGroupSize` INT UNSIGNED NOT NULL DEFAULT 1,
+  `CreatedByFacultyId` INT UNSIGNED NOT NULL,
+  `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`TaskId`),
+  KEY `idx_tasks_course` (`CourseId`),
+  KEY `idx_tasks_faculty` (`CreatedByFacultyId`),
+  CONSTRAINT `fk_tasks_course`
+    FOREIGN KEY (`CourseId`) REFERENCES `Courses` (`CourseId`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tasks_faculty`
+    FOREIGN KEY (`CreatedByFacultyId`) REFERENCES `Users` (`UserId`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Repositories: project archives linked to a course, with cached code metrics.
 CREATE TABLE IF NOT EXISTS `Repositories` (
   `RepoId` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `CourseId` INT UNSIGNED NOT NULL,
+  `OwnerStudentId` INT UNSIGNED NULL,
+  `TaskId` INT UNSIGNED NULL,
   `RepoSlug` VARCHAR(100) NOT NULL,
   `Title` VARCHAR(255) NOT NULL,
   `Description` TEXT NULL,
   `BareRepoDiskPath` VARCHAR(500) NOT NULL,
   `DeadlineUtc` DATETIME(6) NULL,
   `IsLocked` TINYINT(1) NOT NULL DEFAULT 0,
+  `IsSubmitted` TINYINT(1) NOT NULL DEFAULT 0,
+  `SubmittedAt` DATETIME(6) NULL,
   `LifecycleStatus` ENUM('Active','Trashed') NOT NULL DEFAULT 'Active',
   `TrashedAt` DATETIME(6) NULL,
   `TotalFiles` INT UNSIGNED NOT NULL DEFAULT 0,
@@ -68,10 +95,18 @@ CREATE TABLE IF NOT EXISTS `Repositories` (
   UNIQUE KEY `uq_repos_course_slug` (`CourseId`, `RepoSlug`),
   UNIQUE KEY `uq_repos_diskpath` (`BareRepoDiskPath`),
   KEY `idx_repos_course` (`CourseId`),
+  KEY `idx_repos_owner` (`OwnerStudentId`),
+  KEY `idx_repos_task` (`TaskId`),
   KEY `idx_repos_status` (`LifecycleStatus`),
   CONSTRAINT `fk_repos_course`
     FOREIGN KEY (`CourseId`) REFERENCES `Courses` (`CourseId`)
-    ON DELETE CASCADE ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_repos_owner`
+    FOREIGN KEY (`OwnerStudentId`) REFERENCES `Users` (`UserId`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_repos_task`
+    FOREIGN KEY (`TaskId`) REFERENCES `CodingTasks` (`TaskId`)
+    ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- RepositoryContributors: student team roster per repository.
@@ -79,15 +114,23 @@ CREATE TABLE IF NOT EXISTS `RepositoryContributors` (
   `RepoId` INT UNSIGNED NOT NULL,
   `StudentUserId` INT UNSIGNED NOT NULL,
   `TeamRole` VARCHAR(50) NOT NULL DEFAULT 'Member',
+  `AccessLevel` ENUM('Owner','GroupCollaborator','PeerViewer','FacultyReviewer') NOT NULL DEFAULT 'GroupCollaborator',
+  `ApprovalStatus` ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Approved',
+  `ApprovedByFacultyId` INT UNSIGNED NULL,
+  `ApprovedAt` DATETIME(6) NULL,
   `AssignedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`RepoId`, `StudentUserId`),
   KEY `idx_contrib_student` (`StudentUserId`),
+  KEY `idx_contrib_faculty` (`ApprovedByFacultyId`),
   CONSTRAINT `fk_contrib_repo`
     FOREIGN KEY (`RepoId`) REFERENCES `Repositories` (`RepoId`)
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_contrib_student`
     FOREIGN KEY (`StudentUserId`) REFERENCES `Users` (`UserId`)
-    ON DELETE CASCADE ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_contrib_faculty`
+    FOREIGN KEY (`ApprovedByFacultyId`) REFERENCES `Users` (`UserId`)
+    ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- RepositoryLanguages: per-language breakdown cached from the metrics scanner.

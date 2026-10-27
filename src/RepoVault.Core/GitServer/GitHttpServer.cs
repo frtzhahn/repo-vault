@@ -242,6 +242,23 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
                 return;
             }
         }
+        else if (svc == "upload-pack")
+        {
+            var (ok, _, user) = await _auth
+                .AuthenticateBasicHeaderAsync(ctx.Request.Headers["Authorization"]).ConfigureAwait(false);
+            if (!ok || user is null)
+            {
+                ctx.Response.Headers["WWW-Authenticate"] = "Basic realm=\"Repo Vault\"";
+                SendStatus(ctx, 401);
+                return;
+            }
+
+            if (!await _rbac.CanCloneRepositoryAsync(user, repo.RepoId).ConfigureAwait(false))
+            {
+                SendStatus(ctx, 403);
+                return;
+            }
+        }
 
         if (!Directory.Exists(repo.BareRepoDiskPath))
         {
