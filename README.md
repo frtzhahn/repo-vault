@@ -43,9 +43,9 @@ kanban
     [ui: login, register, student explorer]@{ assigned: 'TBD', ticket: '#12' }
     [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
     [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
+    [core: classroom tasks and access tickets]@{ assigned: 'Aldrin', ticket: '#31' }
   [In Progress]
-    [LAN Integration & Desktop Wiring]@{ assigned: 'Aldrin' }
-    [WinForms Auth & Main Shell]@{ assigned: 'Aldrin' }
+    [Classroom Coding Tasks & Access Tickets]@{ assigned: 'Aldrin' }
     [Student Workspace UI Implementation]@{ assigned: 'TBD' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
@@ -69,7 +69,7 @@ kanban
     [Deterministic Code Metrics Scanner]@{ assigned: 'Aldrin' }
     [Core Read Layer, File Browser & LAN Helper]@{ assigned: 'Aldrin' }
     [Database Seed Data & Demo Workspace Seeder]@{ assigned: 'Aldrin' }
-
+    [WinForms Auth & Main Shell]@{ assigned: 'Aldrin' }
 ```
 
 ## Contribution Guide for Members

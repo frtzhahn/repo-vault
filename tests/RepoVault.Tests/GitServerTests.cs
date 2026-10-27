@@ -282,7 +282,7 @@ public sealed class GitServerTests : IAsyncLifetime
         string slug = "advup" + _tag;
         await MakeServerRepoAsync(slug);
 
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        using var client = AuthedClient(_student.Username, _password);
         using var res = await client.GetAsync(RawUrl(slug) + "/info/refs?service=git-upload-pack");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         Assert.Equal(
@@ -420,5 +420,21 @@ public sealed class GitServerTests : IAsyncLifetime
         Assert.NotEqual(0, forced.ExitCode);
 
         Assert.Equal(2, (await LedgerForAsync(repo.RepoId)).Count);
+    }
+
+    [Fact]
+    public async Task M5D_GitHttpServer_FacultyCanClone_CannotPush()
+    {
+        string slug = "facperm" + _tag;
+        RepositoryRecord repo = await MakeServerRepoAsync(slug);
+
+        // faculty can clone (upload-pack returns 200)
+        using var facClient = AuthedClient(_faculty.Username, _password);
+        using var cloneRes = await facClient.GetAsync(RawUrl(slug) + "/info/refs?service=git-upload-pack");
+        Assert.Equal(HttpStatusCode.OK, cloneRes.StatusCode);
+
+        // faculty is strictly forbidden from pushing (receive-pack returns 403)
+        using var pushRes = await facClient.GetAsync(RawUrl(slug) + "/info/refs?service=git-receive-pack");
+        Assert.Equal(HttpStatusCode.Forbidden, pushRes.StatusCode);
     }
 }

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text;
+using RepoVault.Core.Models;
+using RepoVault.Core.Security;
 
 namespace RepoVault.Core.GitServer;
 
@@ -66,6 +68,33 @@ public sealed class RepoBrowser
         }
 
         return files;
+    }
+
+    public async Task<RepoBlobContent> ReadFileBlobAuthorizedAsync(
+        RbacGuard rbac, User viewer, int repoId, string bareRepoPath, string pathOrBlobSha,
+        int maxBytes = 1_048_576, CancellationToken ct = default)
+    {
+        if (!await rbac.CanViewRepositoryMetadataAsync(viewer, repoId, ct).ConfigureAwait(false))
+        {
+            return new RepoBlobContent(false, false,
+                "[Access Restricted: You do not have permission to view this repository.]", 0);
+        }
+
+        if (await rbac.CanReadSourceCodeAsync(viewer, repoId, ct).ConfigureAwait(false))
+        {
+            return await ReadFileBlobAsync(bareRepoPath, pathOrBlobSha, maxBytes, ct).ConfigureAwait(false);
+        }
+
+        // peer viewers can only read the readme file
+        bool isReadme = pathOrBlobSha.EndsWith("README.md", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(pathOrBlobSha, "readme.md", StringComparison.OrdinalIgnoreCase);
+        if (isReadme)
+        {
+            return await ReadFileBlobAsync(bareRepoPath, pathOrBlobSha, maxBytes, ct).ConfigureAwait(false);
+        }
+
+        return new RepoBlobContent(false, false,
+            "[Access Restricted: Source code inspection is restricted to the repository owner, approved groupmates, and authorized faculty.]", 0);
     }
 
     public async Task<RepoBlobContent> ReadFileBlobAsync(

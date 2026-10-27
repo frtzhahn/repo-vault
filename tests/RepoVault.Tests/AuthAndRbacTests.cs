@@ -1,7 +1,9 @@
 using System.Text;
 using RepoVault.Core.Data;
+using RepoVault.Core.GitServer;
 using RepoVault.Core.Models;
 using RepoVault.Core.Security;
+using RepoVault.Core.Services;
 
 namespace RepoVault.Tests;
 
@@ -416,7 +418,7 @@ public sealed class AuthAndRbacTests
     }
 
     [Fact]
-    public async Task Faculty_CanPushToOpenRepo()
+    public async Task Faculty_CanCloneAndRead_CannotPushToStudentRepo()
     {
         var db = new DbHelper();
         var auth = new AuthService(db);
@@ -425,7 +427,9 @@ public sealed class AuthAndRbacTests
         try
         {
             PushFixture fix = await SetupPushFixtureAsync(db, auth, tag);
-            Assert.True(await guard.CanPushToRepositoryAsync(fix.Faculty, fix.OpenRepo));
+            Assert.True(await guard.CanReadSourceCodeAsync(fix.Faculty, fix.OpenRepo));
+            Assert.True(await guard.CanCloneRepositoryAsync(fix.Faculty, fix.OpenRepo));
+            Assert.False(await guard.CanPushToRepositoryAsync(fix.Faculty, fix.OpenRepo));
         }
         finally
         {
@@ -552,6 +556,201 @@ public sealed class AuthAndRbacTests
                 IsActive = false,
             };
             Assert.False(await guard.CanPushToRepositoryAsync(quiet, fix.OpenRepo));
+        }
+        finally
+        {
+            await CleanupAsync(db, tag);
+        }
+    }
+
+    [Fact]
+    public async Task M5D_UninvitedStudent_CannotView_Clone_OrPush()
+    {
+        var db = new DbHelper();
+        var auth = new AuthService(db);
+        var guard = new RbacGuard(db);
+        var courses = new CourseService(db);
+        var repos = new RepoService(db);
+        string tag = NewTag();
+        try
+        {
+            User faculty = await RegisterAsync(auth, "F" + tag, UserRole.Faculty);
+            User owner = await RegisterAsync(auth, "O" + tag, UserRole.Student);
+            User uninvited = await RegisterAsync(auth, "U" + tag, UserRole.Student);
+
+            var (cOk, _, course) = await courses.CreateCourseAsync(
+                faculty, "C" + tag, "Title " + tag, "CSD", "2026-1st");
+            Assert.True(cOk);
+
+            var (rOk, _, repo) = await repos.CreateRepositoryAsync(
+                owner, course!.CourseId, "priv-" + tag, "Private Repo", null, DateTime.UtcNow.AddDays(7));
+            Assert.True(rOk);
+
+            Assert.False(await guard.CanViewRepositoryMetadataAsync(uninvited, repo!.RepoId));
+            Assert.False(await guard.CanReadSourceCodeAsync(uninvited, repo.RepoId));
+            Assert.False(await guard.CanCloneRepositoryAsync(uninvited, repo.RepoId));
+            Assert.False(await guard.CanPushToRepositoryAsync(uninvited, repo.RepoId));
+        }
+        finally
+        {
+            await CleanupAsync(db, tag);
+        }
+    }
+
+    [Fact]
+    public async Task M5D_PeerViewer_CanViewReadme_BlockedFromCodeAndPush()
+    {
+        var db = new DbHelper();
+        var auth = new AuthService(db);
+        var guard = new RbacGuard(db);
+        var courses = new CourseService(db);
+        var repos = new RepoService(db);
+        var contributors = new ContributorService(db);
+        var browser = new RepoBrowser();
+        string tag = NewTag();
+        try
+        {
+            User faculty = await RegisterAsync(auth, "F" + tag, UserRole.Faculty);
+            User owner = await RegisterAsync(auth, "O" + tag, UserRole.Student);
+            User peer = await RegisterAsync(auth, "P" + tag, UserRole.Student);
+
+            var (cOk, _, course) = await courses.CreateCourseAsync(
+                faculty, "C" + tag, "Title " + tag, "CSD", "2026-1st");
+            Assert.True(cOk);
+
+            var (rOk, _, repo) = await repos.CreateRepositoryAsync(
+                owner, course!.CourseId, "peer-" + tag, "Peer Repo", null, DateTime.UtcNow.AddDays(7));
+            Assert.True(rOk);
+
+            await GitProcessRunner.InitializeBareRepositoryAsync(repo!.BareRepoDiskPath);
+
+            // create a commit with README.md and Solution.cs
+            string work = Path.Combine(Path.GetTempPath(), "repovault-peerwork-" + tag);
+            Directory.CreateDirectory(work);
+            try
+            {
+                await GitProcessRunner.RunAsync(["init", "--initial-branch=main", "."], work);
+                await GitProcessRunner.RunAsync(["config", "user.name", "Tester"], work);
+                await GitProcessRunner.RunAsync(["config", "user.email", "tester@test.local"], work);
+                await File.WriteAllTextAsync(Path.Combine(work, "README.md"), "# Peer Project\nAll welcome.");
+                await File.WriteAllTextAsync(Path.Combine(work, "Solution.cs"), "class Solution { int secret = 42; }");
+                await GitProcessRunner.RunAsync(["add", "."], work);
+                await GitProcessRunner.RunAsync(["commit", "-m", "first commit"], work);
+                await GitProcessRunner.RunAsync(["push", repo.BareRepoDiskPath, "HEAD:main"], work);
+            }
+            finally
+            {
+                if (Directory.Exists(work))
+                {
+                    Directory.Delete(work, true);
+                }
+            }
+
+            var (gOk, _) = await contributors.GrantPeerViewerAsync(owner, repo.RepoId, peer.UserId);
+            Assert.True(gOk);
+
+            Assert.True(await guard.CanViewRepositoryMetadataAsync(peer, repo.RepoId));
+            Assert.False(await guard.CanReadSourceCodeAsync(peer, repo.RepoId));
+            Assert.False(await guard.CanCloneRepositoryAsync(peer, repo.RepoId));
+            Assert.False(await guard.CanPushToRepositoryAsync(peer, repo.RepoId));
+
+            // peer viewer can read README.md
+            RepoBlobContent readmeContent = await browser.ReadFileBlobAuthorizedAsync(
+                guard, peer, repo.RepoId, repo.BareRepoDiskPath, "README.md");
+            Assert.Contains("# Peer Project", readmeContent.TextContent);
+
+            // peer viewer is blocked from reading Solution.cs
+            RepoBlobContent codeContent = await browser.ReadFileBlobAuthorizedAsync(
+                guard, peer, repo.RepoId, repo.BareRepoDiskPath, "Solution.cs");
+            Assert.Contains("[Access Restricted", codeContent.TextContent);
+        }
+        finally
+        {
+            await CleanupAsync(db, tag);
+        }
+    }
+
+    [Fact]
+    public async Task M5D_GroupmateTicket_PendingBlocked_ApprovedCanCloneAndPush()
+    {
+        var db = new DbHelper();
+        var auth = new AuthService(db);
+        var guard = new RbacGuard(db);
+        var courses = new CourseService(db);
+        var repos = new RepoService(db);
+        var contributors = new ContributorService(db);
+        string tag = NewTag();
+        try
+        {
+            User faculty = await RegisterAsync(auth, "F" + tag, UserRole.Faculty);
+            User owner = await RegisterAsync(auth, "O" + tag, UserRole.Student);
+            User groupmate = await RegisterAsync(auth, "G" + tag, UserRole.Student);
+
+            var (cOk, _, course) = await courses.CreateCourseAsync(
+                faculty, "C" + tag, "Title " + tag, "CSD", "2026-1st");
+            Assert.True(cOk);
+
+            var (rOk, _, repo) = await repos.CreateRepositoryAsync(
+                owner, course!.CourseId, "grp-" + tag, "Group Repo", null, DateTime.UtcNow.AddDays(7));
+            Assert.True(rOk);
+
+            var (reqOk, reqMsg) = await contributors.RequestGroupmateTicketAsync(
+                owner, repo!.RepoId, groupmate.UserId, "Developer");
+            Assert.True(reqOk, reqMsg);
+
+            // while pending, groupmate has no code read, clone, or push access
+            Assert.False(await guard.CanReadSourceCodeAsync(groupmate, repo.RepoId));
+            Assert.False(await guard.CanCloneRepositoryAsync(groupmate, repo.RepoId));
+            Assert.False(await guard.CanPushToRepositoryAsync(groupmate, repo.RepoId));
+
+            // faculty approves ticket
+            var (revOk, revMsg) = await contributors.ReviewGroupmateTicketAsync(
+                faculty, repo.RepoId, groupmate.UserId, approve: true);
+            Assert.True(revOk, revMsg);
+
+            // now groupmate can read code, clone, and push
+            Assert.True(await guard.CanViewRepositoryMetadataAsync(groupmate, repo.RepoId));
+            Assert.True(await guard.CanReadSourceCodeAsync(groupmate, repo.RepoId));
+            Assert.True(await guard.CanCloneRepositoryAsync(groupmate, repo.RepoId));
+            Assert.True(await guard.CanPushToRepositoryAsync(groupmate, repo.RepoId));
+        }
+        finally
+        {
+            await CleanupAsync(db, tag);
+        }
+    }
+
+    [Fact]
+    public async Task M5D_IndividualTask_RejectsGroupmateTicket()
+    {
+        var db = new DbHelper();
+        var auth = new AuthService(db);
+        var courses = new CourseService(db);
+        var repos = new RepoService(db);
+        var contributors = new ContributorService(db);
+        string tag = NewTag();
+        try
+        {
+            User faculty = await RegisterAsync(auth, "F" + tag, UserRole.Faculty);
+            User studentA = await RegisterAsync(auth, "A" + tag, UserRole.Student);
+            User studentB = await RegisterAsync(auth, "B" + tag, UserRole.Student);
+
+            var (cOk, _, course) = await courses.CreateCourseAsync(
+                faculty, "C" + tag, "Title " + tag, "CSD", "2026-1st");
+            Assert.True(cOk);
+
+            var (tOk, _, task) = await courses.CreateCodingTaskAsync(
+                faculty, course!.CourseId, "Solo Task " + tag, "Individual work only.",
+                starterTemplate: "csharp", allowGroupWork: false, maxGroupSize: 1);
+            Assert.True(tOk);
+
+            var (sOk, _, repo) = await repos.StartCodingTaskAsync(studentA, task!.TaskId);
+            Assert.True(sOk);
+
+            var (reqOk, reqMsg) = await contributors.RequestGroupmateTicketAsync(
+                studentA, repo!.RepoId, studentB.UserId);
+            Assert.False(reqOk);
+            Assert.Equal("This coding task is strictly individual.", reqMsg);
         }
         finally
         {

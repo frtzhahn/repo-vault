@@ -8,6 +8,7 @@ public sealed class DatabaseSchemaTests
     [
         "Users",
         "Courses",
+        "CodingTasks",
         "Repositories",
         "RepositoryContributors",
         "RepositoryLanguages",
@@ -106,5 +107,54 @@ public sealed class DatabaseSchemaTests
         object? value = await cmd.ExecuteScalarAsync();
         Assert.NotNull(value);
         Assert.Contains("GENERATED", value.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CodingTasks_HasExpectedColumns()
+    {
+        var factory = new DbHelper();
+        await using var conn = await factory.CreateOpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COLUMN_NAME FROM information_schema.COLUMNS " +
+                          "WHERE TABLE_SCHEMA = 'repo_vault_db' AND TABLE_NAME = 'CodingTasks';";
+
+        var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            found.Add(reader.GetString(0));
+        }
+
+        Assert.Contains("TaskId", found);
+        Assert.Contains("CourseId", found);
+        Assert.Contains("Title", found);
+        Assert.Contains("Instructions", found);
+        Assert.Contains("StarterTemplate", found);
+        Assert.Contains("DeadlineUtc", found);
+        Assert.Contains("AllowGroupWork", found);
+        Assert.Contains("MaxGroupSize", found);
+        Assert.Contains("CreatedByFacultyId", found);
+    }
+
+    [Fact]
+    public async Task Repositories_HasOwnerAndTaskColumns()
+    {
+        var factory = new DbHelper();
+        await using var conn = await factory.CreateOpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COLUMN_NAME FROM information_schema.COLUMNS " +
+                          "WHERE TABLE_SCHEMA = 'repo_vault_db' AND TABLE_NAME = 'Repositories';";
+
+        var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            found.Add(reader.GetString(0));
+        }
+
+        Assert.Contains("OwnerStudentId", found);
+        Assert.Contains("TaskId", found);
+        Assert.Contains("IsSubmitted", found);
+        Assert.Contains("SubmittedAt", found);
     }
 }

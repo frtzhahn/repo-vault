@@ -1,6 +1,8 @@
 using System.Text;
 using MySqlConnector;
 using RepoVault.Core.Data;
+using RepoVault.Core.GitServer;
+using RepoVault.Core.Metrics;
 using RepoVault.Core.Models;
 using RepoVault.Core.Security;
 
@@ -49,7 +51,7 @@ public sealed class RepoService
 
     public async Task<(bool Ok, string Message, RepositoryRecord? Repo)> CreateRepositoryAsync(
         User actor, int courseId, string repoSlug, string title,
-        string? description, DateTime? deadlineUtc, CancellationToken ct = default)
+        string? description, DateTime? deadlineUtc, int? taskId = null, CancellationToken ct = default)
     {
         if (!actor.IsActive)
         {
@@ -71,13 +73,16 @@ public sealed class RepoService
         await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
 
         int repoId;
+        int? ownerStudentId = actor.Role == UserRole.Student ? actor.UserId : null;
         await using (var cmd = conn.CreateCommand())
         {
             // insert with a throwaway path, the real path needs the new id
-            cmd.CommandText = "INSERT INTO Repositories (CourseId, RepoSlug, Title, Description, " +
-                              "BareRepoDiskPath, DeadlineUtc, CreatedAt) " +
-                              "VALUES (@c, @s, @t, @d, @p, @dl, @now);";
+            cmd.CommandText = "INSERT INTO Repositories (CourseId, OwnerStudentId, TaskId, RepoSlug, " +
+                              "Title, Description, BareRepoDiskPath, DeadlineUtc, CreatedAt) " +
+                              "VALUES (@c, @owner, @task, @s, @t, @d, @p, @dl, @now);";
             cmd.Parameters.AddWithValue("@c", courseId);
+            cmd.Parameters.AddWithValue("@owner", (object?)ownerStudentId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@task", (object?)taskId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@s", slug);
             cmd.Parameters.AddWithValue("@t", title);
             cmd.Parameters.AddWithValue("@d", (object?)description?.Trim() ?? DBNull.Value);
@@ -108,6 +113,19 @@ public sealed class RepoService
             path.Parameters.AddWithValue("@p", diskPath);
             path.Parameters.AddWithValue("@id", repoId);
             await path.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        // student creator is owner and lead contributor
+        if (actor.Role == UserRole.Student)
+        {
+            await using var member = conn.CreateCommand();
+            member.CommandText = "INSERT INTO RepositoryContributors (RepoId, StudentUserId, TeamRole, " +
+                                 "AccessLevel, ApprovalStatus, AssignedAt) " +
+                                 "VALUES (@r, @u, 'Lead', 'Owner', 'Approved', @now);";
+            member.Parameters.AddWithValue("@r", repoId);
+            member.Parameters.AddWithValue("@u", actor.UserId);
+            member.Parameters.AddWithValue("@now", DateTime.UtcNow);
+            await member.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
 
         RepositoryRecord? created = await GetByIdAsync(repoId, ct).ConfigureAwait(false);
@@ -540,10 +558,209 @@ public sealed class RepoService
         }
     }
 
+    public async Task<(bool Ok, string Message, RepositoryRecord? Repo)> StartCodingTaskAsync(
+        User student, int taskId, CancellationToken ct = default)
+    {
+        if (!student.IsActive || student.Role != UserRole.Student)
+        {
+            return (false, "only active students can start coding tasks.", null);
+        }
+
+        var courseService = new CourseService(_db);
+        CodingTask? task = await courseService.GetTaskByIdAsync(taskId, ct).ConfigureAwait(false);
+        if (task is null)
+        {
+            return (false, "coding task not found.", null);
+        }
+
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+
+        // check if student already has an active repository for this task
+        await using (var existing = conn.CreateCommand())
+        {
+            existing.CommandText = "SELECT r.RepoId FROM Repositories r " +
+                                   "WHERE r.TaskId = @t AND r.OwnerStudentId = @u AND r.LifecycleStatus = 'Active' LIMIT 1;";
+            existing.Parameters.AddWithValue("@t", taskId);
+            existing.Parameters.AddWithValue("@u", student.UserId);
+            object? hit = await existing.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            if (hit is not null)
+            {
+                RepositoryRecord? existingRepo = await GetByIdAsync(Convert.ToInt32(hit), ct).ConfigureAwait(false);
+                return (true, "already started", existingRepo);
+            }
+        }
+
+        string rawSlug = $"task-{task.TaskId}-{student.Username}";
+        string title = $"{task.Title} - {student.FullName}";
+        var (createdOk, createdMsg, repo) = await CreateRepositoryAsync(
+            student, task.CourseId, rawSlug, title, task.Instructions,
+            task.DeadlineUtc, task.TaskId, ct).ConfigureAwait(false);
+
+        if (!createdOk || repo is null)
+        {
+            return (createdOk, createdMsg, null);
+        }
+
+        // initialize bare repo and seed initial starter commit
+        await GitProcessRunner.InitializeBareRepositoryAsync(repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+        await SeedStarterCommitAsync(repo.BareRepoDiskPath, task, student, ct).ConfigureAwait(false);
+
+        // index initial commit and scanner
+        await new CommitLogIndexer(_db).IndexCommitsAsync(repo.RepoId, repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+        await new CodeMetricsScanner(_db).ScanRepositoryMetricsAsync(repo.RepoId, repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+
+        RepositoryRecord? fresh = await GetByIdAsync(repo.RepoId, ct).ConfigureAwait(false);
+        return (true, "ok", fresh);
+    }
+
+    public async Task<(bool Ok, string Message)> SetSubmissionStateAsync(
+        User student, int repoId, bool isSubmitted, CancellationToken ct = default)
+    {
+        if (!student.IsActive)
+        {
+            return (false, "deactivated accounts cannot update submission status.");
+        }
+
+        RepositoryRecord? repo = await GetByIdAsync(repoId, ct).ConfigureAwait(false);
+        if (repo is null)
+        {
+            return (false, "repository not found.");
+        }
+
+        if (repo.LifecycleStatus != LifecycleStatus.Active || repo.IsLocked)
+        {
+            return (false, "repository is locked or trashed.");
+        }
+
+        if (repo.DeadlineUtc.HasValue && repo.DeadlineUtc.Value < DateTime.UtcNow)
+        {
+            return (false, "deadline has passed, submission cannot be updated.");
+        }
+
+        // only the owner or an approved groupmate can submit
+        var rbac = new RbacGuard(_db);
+        if (!await rbac.CanPushToRepositoryAsync(student, repoId, ct).ConfigureAwait(false))
+        {
+            return (false, "only the repository owner or approved groupmates can submit.");
+        }
+
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Repositories SET IsSubmitted = @s, SubmittedAt = @time WHERE RepoId = @id;";
+        cmd.Parameters.AddWithValue("@s", isSubmitted ? 1 : 0);
+        cmd.Parameters.AddWithValue("@time", isSubmitted ? (object)DateTime.UtcNow : DBNull.Value);
+        cmd.Parameters.AddWithValue("@id", repoId);
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+
+        return (true, "ok");
+    }
+
+    public async Task<List<RepositoryRecord>> ListVisibleRepositoriesForUserAsync(
+        User viewer, int? courseIdFilter = null, CancellationToken ct = default)
+    {
+        if (!viewer.IsActive)
+        {
+            return new List<RepositoryRecord>();
+        }
+
+        await using var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+
+        string sql;
+        if (viewer.Role == UserRole.Faculty)
+        {
+            // faculty sees repos in courses they teach, plus repos where they are an approved reviewer
+            sql = SelectAll + " WHERE LifecycleStatus = 'Active' AND (CourseId IN " +
+                  "(SELECT CourseId FROM Courses WHERE CreatedByFacultyId = @uid) " +
+                  "OR RepoId IN (SELECT RepoId FROM RepositoryContributors " +
+                  "WHERE StudentUserId = @uid AND ApprovalStatus = 'Approved'))";
+        }
+        else
+        {
+            // students see repos they own, plus repos where they are approved contributors or peer viewers
+            sql = SelectAll + " WHERE LifecycleStatus = 'Active' AND (OwnerStudentId = @uid " +
+                  "OR RepoId IN (SELECT RepoId FROM RepositoryContributors " +
+                  "WHERE StudentUserId = @uid AND ApprovalStatus = 'Approved'))";
+        }
+
+        if (courseIdFilter.HasValue)
+        {
+            sql += " AND CourseId = @cid";
+            cmd.Parameters.AddWithValue("@cid", courseIdFilter.Value);
+        }
+
+        cmd.CommandText = sql + " ORDER BY CreatedAt DESC;";
+        cmd.Parameters.AddWithValue("@uid", viewer.UserId);
+
+        var list = new List<RepositoryRecord>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(MapRepo(reader));
+        }
+
+        return list;
+    }
+
+    private static async Task SeedStarterCommitAsync(
+        string barePath, CodingTask task, User student, CancellationToken ct)
+    {
+        string work = Path.Combine(Path.GetTempPath(), "repovault-task-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(work);
+        try
+        {
+            await GitProcessRunner.RunAsync(["init", "--initial-branch=main", "."], work, null, ct).ConfigureAwait(false);
+            await GitProcessRunner.RunAsync(["config", "user.name", "RepoVault Classroom"], work, null, ct).ConfigureAwait(false);
+            await GitProcessRunner.RunAsync(["config", "user.email", "classroom@repovault.local"], work, null, ct).ConfigureAwait(false);
+
+            string readme = $"# {task.Title}\n\nStudent: {student.FullName} ({student.IdNumber})\n\n## Instructions\n{task.Instructions ?? "Classroom coding task."}\n";
+            await File.WriteAllTextAsync(Path.Combine(work, "README.md"), readme, ct).ConfigureAwait(false);
+
+            string starterCode = GetStarterTemplateContent(task.StarterTemplate, task.Title);
+            string starterFile = GetStarterFileName(task.StarterTemplate);
+            await File.WriteAllTextAsync(Path.Combine(work, starterFile), starterCode, ct).ConfigureAwait(false);
+
+            await GitProcessRunner.RunAsync(["add", "."], work, null, ct).ConfigureAwait(false);
+            await GitProcessRunner.RunAsync(["commit", "-m", "starter template for " + task.Title], work, null, ct).ConfigureAwait(false);
+            await GitProcessRunner.RunAsync(["push", barePath, "HEAD:main"], work, null, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(work))
+                {
+                    Directory.Delete(work, true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static string GetStarterFileName(string template) => template.ToLowerInvariant() switch
+    {
+        "java" => "Main.java",
+        "python" or "py" => "main.py",
+        "c" => "main.c",
+        "cpp" or "c++" => "main.cpp",
+        _ => "Program.cs",
+    };
+
+    private static string GetStarterTemplateContent(string template, string title) => template.ToLowerInvariant() switch
+    {
+        "java" => $"public class Main {{\n    public static void main(String[] args) {{\n        System.out.println(\"Starter for {title}\");\n    }}\n}}\n",
+        "python" or "py" => $"def main():\n    print(\"Starter for {title}\")\n\nif __name__ == '__main__':\n    main()\n",
+        "c" => $"#include <stdio.h>\n\nint main(void) {{\n    printf(\"Starter for {title}\\n\");\n    return 0;\n}}\n",
+        _ => $"using System;\n\nConsole.WriteLine(\"Starter for {title}\");\n",
+    };
+
     private const string SelectAll =
-        "SELECT RepoId, CourseId, RepoSlug, Title, Description, BareRepoDiskPath, DeadlineUtc, " +
-        "IsLocked, LifecycleStatus, TrashedAt, TotalFiles, SourceLines, CommentLines, BlankLines, " +
-        "PrimaryLanguage, CreatedAt FROM Repositories";
+        "SELECT RepoId, CourseId, OwnerStudentId, TaskId, RepoSlug, Title, Description, " +
+        "BareRepoDiskPath, DeadlineUtc, IsLocked, IsSubmitted, SubmittedAt, LifecycleStatus, " +
+        "TrashedAt, TotalFiles, SourceLines, CommentLines, BlankLines, PrimaryLanguage, CreatedAt " +
+        "FROM Repositories";
 
     internal static RepositoryRecord MapRepo(MySqlDataReader reader)
     {
@@ -551,6 +768,10 @@ public sealed class RepoService
         {
             RepoId = Convert.ToInt32(reader["RepoId"]),
             CourseId = Convert.ToInt32(reader["CourseId"]),
+            OwnerStudentId = reader.IsDBNull(reader.GetOrdinal("OwnerStudentId"))
+                ? null : (int?)Convert.ToInt32(reader["OwnerStudentId"]),
+            TaskId = reader.IsDBNull(reader.GetOrdinal("TaskId"))
+                ? null : (int?)Convert.ToInt32(reader["TaskId"]),
             RepoSlug = reader["RepoSlug"]?.ToString() ?? string.Empty,
             Title = reader["Title"]?.ToString() ?? string.Empty,
             Description = reader.IsDBNull(reader.GetOrdinal("Description"))
@@ -559,6 +780,9 @@ public sealed class RepoService
             DeadlineUtc = reader.IsDBNull(reader.GetOrdinal("DeadlineUtc"))
                 ? null : (DateTime?)reader["DeadlineUtc"],
             IsLocked = Convert.ToBoolean(reader["IsLocked"]),
+            IsSubmitted = Convert.ToBoolean(reader["IsSubmitted"]),
+            SubmittedAt = reader.IsDBNull(reader.GetOrdinal("SubmittedAt"))
+                ? null : (DateTime?)reader["SubmittedAt"],
             LifecycleStatus = Enum.Parse<LifecycleStatus>(reader["LifecycleStatus"]?.ToString() ?? "Active"),
             TrashedAt = reader.IsDBNull(reader.GetOrdinal("TrashedAt"))
                 ? null : (DateTime?)reader["TrashedAt"],
