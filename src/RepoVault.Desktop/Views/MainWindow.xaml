@@ -2,174 +2,257 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Repo Vault - Classroom Workstation"
-        Width="1360"
-        Height="860"
-        MinWidth="1040"
-        MinHeight="680"
+        Width="1280"
+        Height="760"
+        MinWidth="1024"
+        MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BgCanvasBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="Segoe UI"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown"
         Closing="Window_Closing">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="52" />
             <RowDefinition Height="*" />
             <RowDefinition Height="28" />
         </Grid.RowDefinitions>
 
-        <!-- row 0: top action and server bar -->
-        <Border Grid.Row="0"
-                Background="{DynamicResource BgSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="0,0,0,1"
-                Padding="14,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+        <!-- row 0: collapsible left sidebar + dedicated main workspace area -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-                <!-- left: app title + role badge pill -->
-                <StackPanel Grid.Column="0"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="Repo Vault"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextPrimaryBrush}" />
-                    <Border x:Name="RoleBadgeBorder"
-                            Background="{DynamicResource AccentBadgeBrush}"
-                            CornerRadius="10"
-                            Padding="10,3"
-                            Margin="10,0,0,0"
-                            VerticalAlignment="Center">
-                        <TextBlock x:Name="LblRoleBadge"
-                                   Text="STUDENT WORKSTATION"
-                                   FontSize="10.5"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource TextOnAccentBrush}" />
-                    </Border>
-                </StackPanel>
+            <!-- collapsible left navigation sidebar (210px when open) -->
+            <Border x:Name="LeftSidebarBorder"
+                    Grid.Column="0"
+                    Width="210"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="46" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                <!-- center: live git http server control group -->
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <Border Background="{DynamicResource BgCanvasBrush}"
+                    <!-- sidebar brand header + [=] toggle -->
+                    <Border Grid.Row="0"
                             BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            BorderThickness="1"
-                            CornerRadius="5"
-                            Padding="10,5"
-                            Margin="0,0,8,0"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse x:Name="ServerDot"
-                                     Width="9"
-                                     Height="9"
-                                     Fill="{DynamicResource AccentDangerBrush}"
-                                     VerticalAlignment="Center"
-                                     Margin="0,0,7,0" />
-                            <TextBlock x:Name="LblServerStatus"
-                                       Text="Git Server: Stopped"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
+                            BorderThickness="0,0,0,1"
+                            Padding="10,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="BtnSidebarHamburger"
+                                    Grid.Column="0"
+                                    Content="[=]"
+                                    FontFamily="Consolas"
+                                    FontWeight="Bold"
+                                    Padding="7,3"
+                                    Margin="0,0,8,0"
+                                    ToolTip="Toggle Sidebar (Ctrl+B)"
+                                    Click="BtnToggleSidebar_Click" />
+                            <TextBlock Grid.Column="1"
+                                       Text="Repo Vault"
+                                       FontSize="15"
+                                       FontWeight="Bold"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Grid.Column="2"
+                                       Text="Ctrl+B"
+                                       FontSize="10"
+                                       FontFamily="Consolas"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- role-specific navigation buttons -->
+                    <StackPanel Grid.Row="1" Margin="8,10,8,10">
+                        <TextBlock Text="NAVIGATION"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Margin="4,0,0,6"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+
+                        <!-- student pages -->
+                        <StackPanel x:Name="StudentNavPanel" Visibility="Collapsed">
+                            <Button x:Name="BtnStudentNavWorkspaces"
+                                    Content="1. My Workspaces"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnStudentNavWorkspaces_Click" />
+                            <Button x:Name="BtnStudentNavTasks"
+                                    Content="2. Assigned Tasks"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnStudentNavTasks_Click" />
+                            <Button x:Name="BtnStudentNavTickets"
+                                    Content="3. Team &amp; Tickets"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnStudentNavTickets_Click" />
+                        </StackPanel>
+
+                        <!-- faculty pages -->
+                        <StackPanel x:Name="FacultyNavPanel" Visibility="Collapsed">
+                            <Button x:Name="BtnFacultyNavCourses"
+                                    Content="1. Courses &amp; Tasks"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnFacultyNavCourses_Click" />
+                            <Button x:Name="BtnFacultyNavSubmissions"
+                                    Content="2. Student Submissions"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnFacultyNavSubmissions_Click" />
+                            <Button x:Name="BtnFacultyNavTickets"
+                                    Content="3. Groupmate Tickets"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnFacultyNavTickets_Click" />
+                            <Button x:Name="BtnFacultyNavTrash"
+                                    Content="4. Repo Bin (Trash)"
+                                    Style="{StaticResource SidebarNavButtonStyle}"
+                                    Margin="0,0,0,4"
+                                    Click="BtnFacultyNavTrash_Click" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- pinned bottom user profile, role badge, and logout -->
+                    <Border Grid.Row="2"
+                            Background="{DynamicResource BgCanvasBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="0,1,0,0"
+                            Padding="10,10">
+                        <StackPanel>
+                            <Border x:Name="RoleBadgeBorder"
+                                    Background="{DynamicResource BgSurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="6,2"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,0,0,5">
+                                <TextBlock x:Name="LblRoleBadge"
+                                           Text="STUDENT WORKSTATION"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource TextMutedBrush}" />
+                            </Border>
+
+                            <TextBlock x:Name="LblLoggedInUser"
+                                       Text="User"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,0,8"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <Button x:Name="BtnLogout"
+                                    Content="Logout"
+                                    Padding="8,4"
+                                    HorizontalAlignment="Stretch"
+                                    Click="BtnLogout_Click" />
                         </StackPanel>
                     </Border>
+                </Grid>
+            </Border>
 
-                    <Button x:Name="BtnServerToggle"
-                            Content="Start Git Server"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Padding="11,5"
-                            Margin="0,0,6,0"
-                            Click="BtnServerToggle_Click" />
+            <!-- main dedicated page host -->
+            <ContentControl x:Name="WorkspaceHost"
+                            Grid.Column="1"
+                            Margin="0" />
+        </Grid>
 
-                    <Button x:Name="BtnCopyCloneBase"
-                            Content="Copy Clone Base"
-                            Padding="10,5"
-                            Margin="0,0,8,0"
-                            Click="BtnCopyCloneBase_Click" />
-
-                    <Border Background="{DynamicResource BgElevatedBrush}"
-                            BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="10,4"
-                            VerticalAlignment="Center">
-                        <TextBlock x:Name="LblPushCounter"
-                                   Text="Pushes Received: 0"
-                                   FontSize="11.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimaryBrush}" />
-                    </Border>
-                </StackPanel>
-
-                <!-- right: seed, theme toggle, user label, logout -->
-                <StackPanel Grid.Column="2"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <Button x:Name="BtnSeedDemo"
-                            Content="Seed / Re-index Demo"
-                            Padding="10,5"
-                            Margin="0,0,6,0"
-                            Click="BtnSeedDemo_Click" />
-
-                    <Button x:Name="BtnThemeToggle"
-                            Content="Theme: Light"
-                            Padding="10,5"
-                            Margin="0,0,10,0"
-                            Click="BtnThemeToggle_Click" />
-
-                    <TextBlock x:Name="LblLoggedInUser"
-                               Text="User"
-                               FontSize="12.5"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"
-                               Foreground="{DynamicResource TextPrimaryBrush}" />
-
-                    <Button x:Name="BtnLogout"
-                            Content="Logout"
-                            Padding="10,5"
-                            Click="BtnLogout_Click" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- row 1: main content host -->
-        <ContentControl x:Name="WorkspaceHost"
-                        Grid.Row="1"
-                        Margin="12" />
-
-        <!-- row 2: bottom status bar -->
-        <Border Grid.Row="2"
+        <!-- row 1: sleek 28px bottom status bar (vs code style) -->
+        <Border Grid.Row="1"
                 Background="{DynamicResource BgSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="0,1,0,0"
-                Padding="14,0">
+                Padding="10,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
+                <!-- status message -->
                 <TextBlock x:Name="LblStatusBar"
                            Grid.Column="0"
                            Text="Ready."
                            FontSize="11.5"
+                           TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
+                           Margin="0,0,12,0"
                            Foreground="{DynamicResource TextMutedBrush}" />
-                <TextBlock x:Name="LblLanInfo"
-                           Grid.Column="1"
-                           Text="LAN IPv4: 127.0.0.1"
-                           FontSize="11.5"
-                           FontFamily="Consolas"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextMutedBrush}" />
+
+                <!-- server controls, push counter, re-index, theme switch, lan info -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Ellipse x:Name="ServerDot"
+                             Width="8"
+                             Height="8"
+                             Fill="{DynamicResource AccentDangerBrush}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,5,0" />
+                    <TextBlock x:Name="LblServerStatus"
+                               Text="Git Server: Stopped"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                    <Button x:Name="BtnServerToggle"
+                            Content="Start Git Server"
+                            Style="{StaticResource StatusBarButtonStyle}"
+                            Margin="0,0,6,0"
+                            Click="BtnServerToggle_Click" />
+
+                    <Button x:Name="BtnCopyCloneBase"
+                            Content="Copy Base URL"
+                            Style="{StaticResource StatusBarButtonStyle}"
+                            Margin="0,0,8,0"
+                            Click="BtnCopyCloneBase_Click" />
+
+                    <TextBlock x:Name="LblPushCounter"
+                               Text="Pushes: 0"
+                               FontSize="11"
+                               FontFamily="Consolas"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"
+                               Foreground="{DynamicResource TextMutedBrush}" />
+
+                    <Button x:Name="BtnSeedDemo"
+                            Content="Re-index"
+                            Style="{StaticResource StatusBarButtonStyle}"
+                            Margin="0,0,6,0"
+                            ToolTip="Seed or re-index classroom demo repositories"
+                            Click="BtnSeedDemo_Click" />
+
+                    <Button x:Name="BtnThemeToggle"
+                            Content="Theme: Light"
+                            Style="{StaticResource StatusBarButtonStyle}"
+                            Margin="0,0,8,0"
+                            Click="BtnThemeToggle_Click" />
+
+                    <TextBlock x:Name="LblLanInfo"
+                               Text="LAN: 127.0.0.1:5050"
+                               FontSize="11"
+                               FontFamily="Consolas"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextMutedBrush}" />
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
