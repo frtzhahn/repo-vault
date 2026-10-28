@@ -59,9 +59,6 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
         _scanner = new CodeMetricsScanner(db);
         _prefix = prefix ?? $"http://127.0.0.1:{port}/";
         _listener.Prefixes.Add(_prefix);
-
-        // every accepted push refreshes commit logs and code metrics in the background
-        PushCompleted += OnPushCompleted;
     }
 
     public bool IsRunning => _running == 1;
@@ -433,7 +430,7 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
             cmd.Parameters.AddWithValue("@now", DateTime.UtcNow);
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
-            PushCompleted?.Invoke(this, new PushCompletedEventArgs
+            var evt = new PushCompletedEventArgs
             {
                 RepoId = repo.RepoId,
                 PusherUserId = pusher.UserId,
@@ -442,13 +439,12 @@ public sealed class GitHttpServer : IAsyncDisposable, IDisposable
                 NewCommitHash = newSha,
                 ClientIpAddress = ip,
                 PushedAt = DateTime.UtcNow,
-            });
-        }
-    }
+            };
 
-    private void OnPushCompleted(object? sender, PushCompletedEventArgs e)
-    {
-        _ = RefreshAfterPushAsync(e);
+            // index commit logs and code metrics before notifying ui subscribers
+            await RefreshAfterPushAsync(evt).ConfigureAwait(false);
+            PushCompleted?.Invoke(this, evt);
+        }
     }
 
     private async Task RefreshAfterPushAsync(PushCompletedEventArgs e)
