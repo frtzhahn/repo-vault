@@ -29,7 +29,7 @@ public partial class MainWindow : Window
         UpdateThemeButtonLabel();
 
         string lanIp = LanHelper.GetPreferredLanIpv4Address();
-        LblLanInfo.Text = $"LAN: {lanIp}:{_session.ServerPort}";
+        LblLanInfo.Text = $"{lanIp}:{_session.ServerPort}";
 
         var user = _session.CurrentUser;
         if (user is not null)
@@ -37,7 +37,7 @@ public partial class MainWindow : Window
             LblLoggedInUser.Text = $"{user.FullName} ({user.Username})";
             if (user.Role == UserRole.Faculty)
             {
-                LblRoleBadge.Text = "FACULTY WORKSTATION";
+                LblRoleBadge.Text = "FACULTY";
                 RoleBadgeBorder.BorderBrush = (Brush)FindResource("AccentPrimaryBrush");
                 Title = $"Repo Vault - Faculty Workstation ({user.FullName})";
                 FacultyNavPanel.Visibility = Visibility.Visible;
@@ -51,7 +51,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                LblRoleBadge.Text = "STUDENT WORKSTATION";
+                LblRoleBadge.Text = "STUDENT";
                 RoleBadgeBorder.BorderBrush = (Brush)FindResource("AccentBadgeBrush");
                 Title = $"Repo Vault - Student Workstation ({user.FullName})";
                 StudentNavPanel.Visibility = Visibility.Visible;
@@ -174,10 +174,26 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.B && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
         {
-            ToggleSidebar();
-            e.Handled = true;
+            if (e.Key == Key.B)
+            {
+                ToggleSidebar();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.J)
+            {
+                if (WorkspaceHost.Content is StudentWorkspaceView sw)
+                {
+                    sw.ToggleBottomPanel();
+                    e.Handled = true;
+                }
+                else if (WorkspaceHost.Content is FacultyWorkspaceView fw)
+                {
+                    fw.ToggleBottomPanel();
+                    e.Handled = true;
+                }
+            }
         }
     }
 
@@ -252,7 +268,7 @@ public partial class MainWindow : Window
 
     private void UpdateThemeButtonLabel()
     {
-        BtnThemeToggle.Content = App.IsDarkMode ? "Theme: Dark" : "Theme: Light";
+        LblThemeToggleText.Text = App.IsDarkMode ? "Dark" : "Light";
     }
 
     private async void BtnServerToggle_Click(object sender, RoutedEventArgs e)
@@ -311,7 +327,7 @@ public partial class MainWindow : Window
 
         if (loopbackFallback)
         {
-            SetStatus($"Git Server running on http://127.0.0.1:{port}/ (run scripts/enable-lan-port.bat as Admin for LAN wildcard binding).");
+            SetStatus($"Git Server running on http://127.0.0.1:{port}/");
         }
         else
         {
@@ -355,7 +371,7 @@ public partial class MainWindow : Window
         {
             _pushCount++;
             LblPushCounter.Text = $"Pushes: {_pushCount}";
-            SetStatus($"Push received on repo #{e.RepoId} ({e.BranchRef}) at {e.PushedAt.ToLocalTime():HH:mm:ss}.");
+            SetStatus($"Push on repo #{e.RepoId} ({e.BranchRef}) at {e.PushedAt.ToLocalTime():HH:mm:ss}.");
 
             if (WorkspaceHost.Content is StudentWorkspaceView sw)
             {
@@ -373,27 +389,13 @@ public partial class MainWindow : Window
         bool running = _session.RunningServer is { IsRunning: true };
         string host = LanHelper.GetPreferredLanIpv4Address();
 
-        BtnServerToggle.Content = running ? "Stop Git Server" : "Start Git Server";
+        LblServerToggleText.Text = running ? "Stop Git Server" : "Start Git Server";
         LblServerStatus.Text = running
-            ? $"Git Server: http://{host}:{_session.ServerPort}/"
+            ? $"Running ({host}:{_session.ServerPort})"
             : "Git Server: Stopped";
         ServerDot.Fill = running
             ? (Brush)FindResource("AccentSuccessBrush")
             : (Brush)FindResource("AccentDangerBrush");
-    }
-
-    private void BtnCopyCloneBase_Click(object sender, RoutedEventArgs e)
-    {
-        string url = $"http://{LanHelper.GetPreferredLanIpv4Address()}:{_session.ServerPort}/repos/";
-        try
-        {
-            Clipboard.SetText(url);
-            SetStatus($"Copied clone base URL to clipboard: {url}<slug>.git");
-        }
-        catch (Exception ex)
-        {
-            SetStatus("Clipboard error: " + ex.Message);
-        }
     }
 
     private async void BtnSeedDemo_Click(object sender, RoutedEventArgs e)
@@ -403,7 +405,7 @@ public partial class MainWindow : Window
         try
         {
             SeederResult res = await _session.Seeder.SeedAllAsync(_session.ReposDirectory);
-            string summary = $"Seeded {res.ReposSeeded} repositories and indexed {res.CommitsIndexed} commits.";
+            string summary = $"Seeded {res.ReposSeeded} repos, indexed {res.CommitsIndexed} commits.";
             SetStatus(summary);
 
             if (WorkspaceHost.Content is StudentWorkspaceView sw)
