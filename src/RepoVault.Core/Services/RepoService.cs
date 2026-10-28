@@ -702,6 +702,214 @@ public sealed class RepoService
         return list;
     }
 
+    public async Task<(bool Ok, string Message)> CommitFileInAppAsync(
+        User actor, int repoId, string relativeFilePath, string content,
+        string commitMessage, CancellationToken ct = default)
+    {
+        if (!actor.IsActive)
+        {
+            return (false, "deactivated accounts cannot commit changes.");
+        }
+
+        string normalizedPath = NormalizeRepoFilePath(relativeFilePath);
+        if (normalizedPath.Length == 0)
+        {
+            return (false, "a valid relative file path is required.");
+        }
+
+        commitMessage = commitMessage.Trim();
+        if (commitMessage.Length == 0)
+        {
+            return (false, "commit message is required.");
+        }
+
+        var rbac = new RbacGuard(_db);
+        if (!await rbac.CanPushToRepositoryAsync(actor, repoId, ct).ConfigureAwait(false))
+        {
+            return (false, "you do not have write permission on this repository, or the repository is locked.");
+        }
+
+        RepositoryRecord? repo = await GetByIdAsync(repoId, ct).ConfigureAwait(false);
+        if (repo is null)
+        {
+            return (false, "repository not found.");
+        }
+
+        if (!Directory.Exists(repo.BareRepoDiskPath))
+        {
+            await GitProcessRunner.InitializeBareRepositoryAsync(repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+        }
+
+        Dictionary<string, string> before =
+            await GitProcessRunner.SnapshotRefsAsync(repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+
+        string work = Path.Combine(Path.GetTempPath(), "repovault-edit-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(work);
+        try
+        {
+            if (before.Count > 0)
+            {
+                var clone = await GitProcessRunner.RunAsync(
+                    ["clone", repo.BareRepoDiskPath, "."], work, null, ct).ConfigureAwait(false);
+                if (clone.ExitCode != 0)
+                {
+                    return (false, "could not check out repository: " + clone.Stderr.Trim());
+                }
+            }
+            else
+            {
+                var init = await GitProcessRunner.RunAsync(
+                    ["init", "--initial-branch=main", "."], work, null, ct).ConfigureAwait(false);
+                if (init.ExitCode != 0)
+                {
+                    return (false, "git init failed: " + init.Stderr.Trim());
+                }
+
+                var remote = await GitProcessRunner.RunAsync(
+                    ["remote", "add", "origin", repo.BareRepoDiskPath], work, null, ct).ConfigureAwait(false);
+                if (remote.ExitCode != 0)
+                {
+                    return (false, "git remote add failed: " + remote.Stderr.Trim());
+                }
+            }
+
+            string authorName = string.IsNullOrWhiteSpace(actor.FullName) ? actor.Username : actor.FullName;
+            string authorEmail = string.IsNullOrWhiteSpace(actor.Email) ? $"{actor.Username}@repovault.local" : actor.Email;
+            await GitProcessRunner.RunAsync(["config", "user.name", authorName], work, null, ct).ConfigureAwait(false);
+            await GitProcessRunner.RunAsync(["config", "user.email", authorEmail], work, null, ct).ConfigureAwait(false);
+
+            string workRootFull = Path.GetFullPath(work);
+            string targetFull = Path.GetFullPath(
+                Path.Combine(workRootFull, normalizedPath.Replace('/', Path.DirectorySeparatorChar)));
+
+            if (!targetFull.StartsWith(workRootFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, "invalid file path outside repository root.");
+            }
+
+            string? parentDir = Path.GetDirectoryName(targetFull);
+            if (!string.IsNullOrEmpty(parentDir))
+            {
+                Directory.CreateDirectory(parentDir);
+            }
+
+            await File.WriteAllTextAsync(targetFull, content ?? string.Empty, new UTF8Encoding(false), ct).ConfigureAwait(false);
+
+            var add = await GitProcessRunner.RunAsync(
+                ["add", "--", normalizedPath], work, null, ct).ConfigureAwait(false);
+            if (add.ExitCode != 0)
+            {
+                return (false, "git add failed: " + add.Stderr.Trim());
+            }
+
+            var status = await GitProcessRunner.RunAsync(
+                ["status", "--porcelain"], work, null, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(status.Stdout))
+            {
+                return (false, "no changes to commit.");
+            }
+
+            var commit = await GitProcessRunner.RunAsync(
+                ["commit", "-m", commitMessage], work, null, ct).ConfigureAwait(false);
+            if (commit.ExitCode != 0)
+            {
+                return (false, "git commit failed: " + commit.Stderr.Trim());
+            }
+
+            var push = await GitProcessRunner.RunAsync(
+                ["push", "origin", "HEAD:main"], work, null, ct).ConfigureAwait(false);
+            if (push.ExitCode != 0)
+            {
+                return (false, "git push failed: " + push.Stderr.Trim());
+            }
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(work))
+                {
+                    ClearReadOnly(work);
+                    Directory.Delete(work, true);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        Dictionary<string, string> after =
+            await GitProcessRunner.SnapshotRefsAsync(repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+
+        await using (var conn = await _db.CreateOpenConnectionAsync(ct).ConfigureAwait(false))
+        {
+            foreach (var (branchRef, newSha) in after)
+            {
+                before.TryGetValue(branchRef, out string? oldSha);
+                oldSha ??= GitProcessRunner.ZeroSha;
+                if (oldSha == newSha)
+                {
+                    continue;
+                }
+
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText =
+                    "INSERT INTO PushLedger (RepoId, PusherUserId, BranchRef, OldCommitHash, " +
+                    "NewCommitHash, ClientIpAddress, PushedAt) " +
+                    "VALUES (@r, @u, @b, @o, @n, @ip, @now);";
+                cmd.Parameters.AddWithValue("@r", repoId);
+                cmd.Parameters.AddWithValue("@u", actor.UserId);
+                cmd.Parameters.AddWithValue("@b", branchRef);
+                cmd.Parameters.AddWithValue("@o", oldSha);
+                cmd.Parameters.AddWithValue("@n", newSha);
+                cmd.Parameters.AddWithValue("@ip", "127.0.0.1");
+                cmd.Parameters.AddWithValue("@now", DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+        }
+
+        await new CommitLogIndexer(_db).IndexCommitsAsync(repoId, repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+        await new CodeMetricsScanner(_db).ScanRepositoryMetricsAsync(repoId, repo.BareRepoDiskPath, ct).ConfigureAwait(false);
+
+        return (true, "ok");
+    }
+
+    private static string NormalizeRepoFilePath(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        string cleaned = raw.Replace('\\', '/').Trim().Trim('/');
+        if (cleaned.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        char[] invalidNameChars = Path.GetInvalidFileNameChars();
+        string[] segments = cleaned.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        foreach (string seg in segments)
+        {
+            if (seg == "." || seg == ".." || string.Equals(seg, ".git", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            if (seg.IndexOfAny(invalidNameChars) >= 0)
+            {
+                return string.Empty;
+            }
+        }
+
+        return string.Join('/', segments);
+    }
+
     private static async Task SeedStarterCommitAsync(
         string barePath, CodingTask task, User student, CancellationToken ct)
     {
@@ -709,9 +917,9 @@ public sealed class RepoService
         Directory.CreateDirectory(work);
         try
         {
-            await GitProcessRunner.RunAsync(["init", "--initial-branch=main", "."], work, null, ct).ConfigureAwait(false);
-            await GitProcessRunner.RunAsync(["config", "user.name", "RepoVault Classroom"], work, null, ct).ConfigureAwait(false);
-            await GitProcessRunner.RunAsync(["config", "user.email", "classroom@repovault.local"], work, null, ct).ConfigureAwait(false);
+            AssertGitStep(await GitProcessRunner.RunAsync(["init", "--initial-branch=main", "."], work, null, ct).ConfigureAwait(false), "init");
+            AssertGitStep(await GitProcessRunner.RunAsync(["config", "user.name", "RepoVault Classroom"], work, null, ct).ConfigureAwait(false), "config");
+            AssertGitStep(await GitProcessRunner.RunAsync(["config", "user.email", "classroom@repovault.local"], work, null, ct).ConfigureAwait(false), "config");
 
             string readme = $"# {task.Title}\n\nStudent: {student.FullName} ({student.IdNumber})\n\n## Instructions\n{task.Instructions ?? "Classroom coding task."}\n";
             await File.WriteAllTextAsync(Path.Combine(work, "README.md"), readme, ct).ConfigureAwait(false);
@@ -720,9 +928,9 @@ public sealed class RepoService
             string starterFile = GetStarterFileName(task.StarterTemplate);
             await File.WriteAllTextAsync(Path.Combine(work, starterFile), starterCode, ct).ConfigureAwait(false);
 
-            await GitProcessRunner.RunAsync(["add", "."], work, null, ct).ConfigureAwait(false);
-            await GitProcessRunner.RunAsync(["commit", "-m", "starter template for " + task.Title], work, null, ct).ConfigureAwait(false);
-            await GitProcessRunner.RunAsync(["push", barePath, "HEAD:main"], work, null, ct).ConfigureAwait(false);
+            AssertGitStep(await GitProcessRunner.RunAsync(["add", "."], work, null, ct).ConfigureAwait(false), "add");
+            AssertGitStep(await GitProcessRunner.RunAsync(["commit", "-m", "starter template for " + task.Title], work, null, ct).ConfigureAwait(false), "commit");
+            AssertGitStep(await GitProcessRunner.RunAsync(["push", barePath, "HEAD:main"], work, null, ct).ConfigureAwait(false), "push");
         }
         finally
         {
@@ -730,12 +938,21 @@ public sealed class RepoService
             {
                 if (Directory.Exists(work))
                 {
+                    ClearReadOnly(work);
                     Directory.Delete(work, true);
                 }
             }
             catch
             {
             }
+        }
+    }
+
+    private static void AssertGitStep(GitProcessResult res, string step)
+    {
+        if (res.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"git {step} failed: {res.Stderr.Trim()}");
         }
     }
 
