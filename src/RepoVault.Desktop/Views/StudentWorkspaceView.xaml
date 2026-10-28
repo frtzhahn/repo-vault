@@ -240,7 +240,7 @@
                             <DataGridTextColumn Header="Team Role" Binding="{Binding TeamRole}" Width="130" />
                             <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="140" FontFamily="Consolas" />
                             <DataGridTextColumn Header="Ticket Status" Binding="{Binding ApprovalStatus}" Width="115" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="Reviewed By" Binding="{Binding ReviewedByFullName}" Width="*" />
+                            <DataGridTextColumn Header="Assigned At" Binding="{Binding AssignedAtText}" Width="*" FontFamily="Consolas" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

@@ -268,7 +268,7 @@ public partial class StudentWorkspaceView : UserControl
                     item.TeamRole,
                     item.AccessLevel.ToString(),
                     item.ApprovalStatus.ToString(),
-                    string.IsNullOrWhiteSpace(item.ReviewedByFullName) ? "--" : item.ReviewedByFullName));
+                    item.AssignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")));
             }
         }
 
@@ -938,7 +938,7 @@ public partial class StudentWorkspaceView : UserControl
 
     private sealed record TicketTableRow(
         string RepoSlug, string FullName, string Username, string TeamRole,
-        string AccessLevel, string ApprovalStatus, string ReviewedByFullName);
+        string AccessLevel, string ApprovalStatus, string AssignedAtText);
 
     private sealed record CommitGridRow(
         string ShortSha, string CommitMessage, string AuthorName, string CommittedAtText);
