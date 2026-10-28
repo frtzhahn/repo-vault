@@ -1,0 +1,123 @@
+<Window x:Class="RepoVault.Desktop.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Repo Vault - Classroom Sign In"
+        Width="520"
+        Height="560"
+        MinWidth="460"
+        MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgCanvasBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Button x:Name="BtnThemeToggle"
+                Grid.Row="0"
+                Content="Theme: Light"
+                HorizontalAlignment="Right"
+                Padding="10,4"
+                Click="BtnThemeToggle_Click" />
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="30,26"
+                VerticalAlignment="Center">
+            <StackPanel>
+                <TextBlock Text="Repo Vault"
+                           FontSize="26"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="Classroom Coding &amp; Assessment Workstation"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           Margin="0,4,0,20" />
+
+                <TextBlock Text="Username"
+                           FontSize="12.5"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Margin="0,0,0,4" />
+                <TextBox x:Name="TxtUsername"
+                         Margin="0,0,0,12" />
+
+                <TextBlock Text="Password"
+                           FontSize="12.5"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Margin="0,0,0,4" />
+                <PasswordBox x:Name="TxtPassword"
+                             Margin="0,0,0,14"
+                             KeyDown="TxtPassword_KeyDown" />
+
+                <Button x:Name="BtnLogin"
+                        Content="Sign In"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Height="36"
+                        Margin="0,0,0,16"
+                        IsDefault="True"
+                        Click="BtnLogin_Click" />
+
+                <Border Background="{DynamicResource BgCanvasBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,10"
+                        Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Quick Classroom Demo Accounts"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Margin="0,0,0,6" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="CboDemoAccount"
+                                      Grid.Column="0"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="prof_santos (Faculty)" />
+                                <ComboBoxItem Content="frtzhahn (Student)" />
+                                <ComboBoxItem Content="sduites (Student)" />
+                            </ComboBox>
+                            <Button x:Name="BtnQuickFill"
+                                    Grid.Column="2"
+                                    Content="Quick Demo Login"
+                                    Click="BtnQuickFill_Click" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Button x:Name="BtnCreateAccount"
+                        Content="Create Student Account"
+                        Height="32"
+                        Margin="0,0,0,12"
+                        Click="BtnCreateAccount_Click" />
+
+                <Border x:Name="StatusBanner"
+                        Background="{DynamicResource BgElevatedBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,7"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="LblStatus"
+                               Text=""
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                </Border>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
