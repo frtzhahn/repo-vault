@@ -57,6 +57,7 @@ public partial class App : Application
             SetBrush("BgCanvasBrush", "#32302F");
             SetBrush("BgSurfaceBrush", "#3C3836");
             SetBrush("BgElevatedBrush", "#504945");
+            SetBrush("BgHoverBrush", "#665C54");
             SetBrush("BorderSubtleBrush", "#665C54");
             SetBrush("TextPrimaryBrush", "#EBDBB2");
             SetBrush("TextMutedBrush", "#A89984");
@@ -72,7 +73,8 @@ public partial class App : Application
             // gruvbox light
             SetBrush("BgCanvasBrush", "#EBDBB2");
             SetBrush("BgSurfaceBrush", "#F2E5BC");
-            SetBrush("BgElevatedBrush", "#D5C4A1");
+            SetBrush("BgElevatedBrush", "#FBF1C7");
+            SetBrush("BgHoverBrush", "#D5C4A1");
             SetBrush("BorderSubtleBrush", "#BDAE93");
             SetBrush("TextPrimaryBrush", "#3C3836");
             SetBrush("TextMutedBrush", "#665C54");
