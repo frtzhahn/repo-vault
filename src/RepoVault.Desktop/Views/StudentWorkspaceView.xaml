@@ -5,562 +5,840 @@
              Foreground="{DynamicResource TextPrimaryBrush}"
              FontFamily="Segoe UI"
              Loaded="UserControl_Loaded">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="330" MinWidth="260" />
-            <ColumnDefinition Width="12" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <!-- left column: classroom navigator card -->
-        <Border Grid.Column="0"
-                Background="{DynamicResource BgSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="1"
-                CornerRadius="6"
-                Padding="12">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0"
-                           Text="Classroom Navigator"
-                           FontSize="15"
-                           FontWeight="Bold"
-                           Margin="0,0,0,8" />
-
-                <Grid Grid.Row="1"
-                      Margin="0,0,0,10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ComboBox x:Name="CboCourseFilter"
-                              Grid.Column="0"
-                              SelectionChanged="CboCourseFilter_SelectionChanged" />
-                    <Button x:Name="BtnRefresh"
-                            Grid.Column="2"
-                            Content="Refresh"
-                            Padding="10,5"
-                            Click="BtnRefresh_Click" />
-                </Grid>
-
-                <TabControl x:Name="TabSidebar"
-                            Grid.Row="2">
-                    <TabItem x:Name="TabMyRepos"
-                             Header="My Repositories">
-                        <DataGrid x:Name="GridMyRepos"
-                                  SelectionChanged="GridMyRepos_SelectionChanged">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Slug" Binding="{Binding RepoSlug}" Width="*" />
-                                <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="65" />
-                                <DataGridTextColumn Header="Status" Binding="{Binding StatusBadge}" Width="78" />
-                                <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineBadge}" Width="75" />
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </TabItem>
-
-                    <TabItem x:Name="TabAssignedTasks"
-                             Header="Assigned Tasks">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <DataGrid x:Name="GridAssignedTasks"
-                                      Grid.Row="0"
-                                      SelectionChanged="GridAssignedTasks_SelectionChanged">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="*" />
-                                    <DataGridTextColumn Header="Type" Binding="{Binding TypeBadge}" Width="68" />
-                                    <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineText}" Width="88" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-
-                            <Border Grid.Row="1"
-                                    Background="{DynamicResource BgCanvasBrush}"
-                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="4"
-                                    Padding="8"
-                                    Margin="0,8,0,8">
-                                <TextBlock x:Name="LblTaskInstructions"
-                                           Text="Select an assigned coding task to view instructions and start your repository."
-                                           FontSize="11.5"
-                                           TextWrapping="Wrap"
-                                           MaxHeight="72"
-                                           Foreground="{DynamicResource TextMutedBrush}" />
-                            </Border>
-
-                            <Button x:Name="BtnStartCodingTask"
-                                    Grid.Row="2"
-                                    Content="Start Coding Task"
-                                    Style="{StaticResource PrimaryButtonStyle}"
-                                    Height="34"
-                                    Click="BtnStartCodingTask_Click" />
-                        </Grid>
-                    </TabItem>
-                </TabControl>
-            </Grid>
-        </Border>
-
-        <GridSplitter Grid.Column="1"
-                      Width="12"
-                      HorizontalAlignment="Stretch"
-                      Background="Transparent" />
-
-        <!-- right column: selected repository workstation -->
-        <Grid Grid.Column="2">
+    <Grid Margin="12">
+        <!-- ======================================================================= -->
+        <!-- TOP-LEVEL PAGES CONTAINER (Pages 1, 2, 3 controlled by Left Sidebar)    -->
+        <!-- ======================================================================= -->
+        <Grid x:Name="TopLevelPagesRoot" Visibility="Visible">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="44" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- top sticky repo header card -->
+            <!-- shared top page header with [=] sidebar toggle and course filter -->
             <Border Grid.Row="0"
                     Background="{DynamicResource BgSurfaceBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="14,12"
+                    CornerRadius="4"
+                    Padding="10,0"
                     Margin="0,0,0,10">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="[=]"
+                                FontFamily="Consolas"
+                                FontWeight="Bold"
+                                Padding="7,3"
+                                Margin="0,0,10,0"
+                                ToolTip="Toggle Left Sidebar (Ctrl+B)"
+                                Click="BtnToggleSidebar_Click" />
+                        <TextBlock x:Name="LblActivePageTitle"
+                                   Text="1. My Workspaces"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Course Filter:"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+                        <ComboBox x:Name="CboCourseFilter"
+                                  Width="240"
+                                  Margin="0,0,8,0"
+                                  SelectionChanged="CboCourseFilter_SelectionChanged" />
+                        <Button x:Name="BtnRefresh"
+                                Content="Refresh"
+                                Padding="10,4"
+                                Click="BtnRefresh_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- PAGE 1: MY WORKSPACES -->
+            <Border x:Name="PageWorkspacesBorder"
+                    Grid.Row="1"
+                    Visibility="Visible"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <TextBlock x:Name="LblRepoTitle"
-                                       Text="Select a Repository"
-                                       FontSize="18"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0" />
-
-                            <Border Background="{DynamicResource BgElevatedBrush}"
-                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="4"
-                                    Padding="8,2"
-                                    Margin="0,0,6,0"
-                                    VerticalAlignment="Center">
-                                <TextBlock x:Name="LblRepoSlugBadge"
-                                           Text="--"
-                                           FontFamily="Consolas"
-                                           FontSize="12" />
-                            </Border>
-
-                            <Border Background="{DynamicResource AccentPrimaryBrush}"
-                                    CornerRadius="4"
-                                    Padding="8,2"
-                                    Margin="0,0,6,0"
-                                    VerticalAlignment="Center">
-                                <TextBlock x:Name="LblCourseBadge"
-                                           Text="COURSE"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource TextOnAccentBrush}" />
-                            </Border>
-
-                            <Border x:Name="DeadlineBadgeBorder"
-                                    Background="{DynamicResource AccentSuccessBrush}"
-                                    CornerRadius="4"
-                                    Padding="8,2"
-                                    VerticalAlignment="Center">
-                                <TextBlock x:Name="LblDeadlineBadge"
-                                           Text="ON TIME"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource TextOnAccentBrush}" />
-                            </Border>
-                        </StackPanel>
-
-                        <Button x:Name="BtnTurnInToggle"
+                        <TextBlock Grid.Column="0"
+                                   Text="Select any repository below and click Open Workspace to edit code, commit changes, or turn in your task."
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+                        <Button x:Name="BtnOpenSelectedWorkspace"
                                 Grid.Column="1"
-                                Content="Turn In Task"
-                                Style="{StaticResource SuccessButtonStyle}"
-                                Padding="14,6"
-                                IsEnabled="False"
-                                Click="BtnTurnInToggle_Click" />
+                                Content="Open Selected Workspace -&gt;"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Padding="12,5"
+                                Click="BtnOpenSelectedWorkspace_Click" />
                     </Grid>
 
-                    <!-- clone command bar -->
-                    <Grid>
+                    <DataGrid x:Name="GridMyRepos"
+                              Grid.Row="1"
+                              MouseDoubleClick="GridMyRepos_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Slug" Binding="{Binding RepoSlug}" Width="140" FontFamily="Consolas" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Repository Title" Binding="{Binding Title}" Width="*" />
+                            <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="90" />
+                            <DataGridTextColumn Header="Role" Binding="{Binding AccessRole}" Width="115" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Status" Binding="{Binding StatusBadge}" Width="95" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineBadge}" Width="95" />
+                            <DataGridTextColumn Header="Source LOC" Binding="{Binding SourceLocText}" Width="90" FontFamily="Consolas" />
+                            <DataGridTemplateColumn Header="Action" Width="155">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Open Workspace -&gt;"
+                                                Style="{StaticResource PrimaryButtonStyle}"
+                                                Padding="8,3"
+                                                Tag="{Binding RepoId}"
+                                                Click="BtnOpenWorkspaceRow_Click" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- PAGE 2: ASSIGNED TASKS -->
+            <Border x:Name="PageTasksBorder"
+                    Grid.Row="1"
+                    Visibility="Collapsed"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="Classroom Coding Tasks posted by faculty. Starting a task automatically initializes your starter Git repository and opens the code editor."
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+                        <Button x:Name="BtnStartCodingTask"
+                                Grid.Column="1"
+                                Content="Start Coding Task -&gt;"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Padding="14,5"
+                                Click="BtnStartCodingTask_Click" />
+                    </Grid>
+
+                    <DataGrid x:Name="GridAssignedTasks"
+                              Grid.Row="1"
+                              Margin="0,0,0,10"
+                              SelectionChanged="GridAssignedTasks_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="100" />
+                            <DataGridTextColumn Header="Starter Template" Binding="{Binding StarterTemplate}" Width="130" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Collaboration Mode" Binding="{Binding TypeBadge}" Width="130" />
+                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineText}" Width="140" FontFamily="Consolas" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Expander Grid.Row="2"
+                              Header="Selected Task Instructions Preview"
+                              IsExpanded="True">
+                        <TextBlock x:Name="LblTaskInstructions"
+                                   Text="Select a task above to read its instructions and starter template details."
+                                   FontSize="12.5"
+                                   TextWrapping="Wrap"
+                                   Margin="4"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </Expander>
+                </Grid>
+            </Border>
+
+            <!-- PAGE 3: TEAM & TICKETS -->
+            <Border x:Name="PageTicketsBorder"
+                    Grid.Row="1"
+                    Visibility="Collapsed"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="Target Repository:"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+                        <ComboBox x:Name="CboTicketRepoSelector"
+                                  Grid.Column="1"
+                                  SelectionChanged="CboTicketRepoSelector_SelectionChanged" />
+
+                        <StackPanel Grid.Column="3" Orientation="Horizontal">
+                            <Button x:Name="BtnRequestGroupmateTicket"
+                                    Content="+ Request Groupmate Ticket"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Padding="10,4"
+                                    Margin="0,0,8,0"
+                                    Click="BtnRequestGroupmateTicket_Click" />
+                            <Button x:Name="BtnGrantPeerAccess"
+                                    Content="+ Grant Peer Access"
+                                    Padding="10,4"
+                                    Click="BtnGrantPeerAccess_Click" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DataGrid x:Name="GridContributors"
+                              Grid.Row="1">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Repository" Binding="{Binding RepoSlug}" Width="140" FontFamily="Consolas" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Student Name" Binding="{Binding FullName}" Width="180" />
+                            <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="120" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Team Role" Binding="{Binding TeamRole}" Width="130" />
+                            <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="140" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Ticket Status" Binding="{Binding ApprovalStatus}" Width="115" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Reviewed By" Binding="{Binding ReviewedByFullName}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ======================================================================= -->
+        <!-- DEDICATED REPOSITORY WORKSPACE VIEW (Full-Height Code Editor & Views)   -->
+        <!-- ======================================================================= -->
+        <Grid x:Name="DedicatedRepoWorkspaceGrid" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- row 0: compact top header bar -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,0"
+                    Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- left: [=] + back button -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="[=]"
+                                FontFamily="Consolas"
+                                FontWeight="Bold"
+                                Padding="7,3"
+                                Margin="0,0,6,0"
+                                ToolTip="Toggle Left Sidebar (Ctrl+B)"
+                                Click="BtnToggleSidebar_Click" />
+                        <Button x:Name="BtnBackToWorkspaces"
+                                Content="&lt;- Back to Workspaces"
+                                Padding="9,3"
+                                Margin="0,0,12,0"
+                                Click="BtnBackToWorkspaces_Click" />
+                    </StackPanel>
+
+                    <!-- center-left: repo title + matte slug & deadline badges -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="LblRepoTitle"
+                                   Text="Repository Title"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="280"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                        <Border Background="{DynamicResource BgElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="6,2"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="LblRepoSlugBadge"
+                                       Text="slug"
+                                       FontSize="11"
+                                       FontFamily="Consolas"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </Border>
+
+                        <Border Background="{DynamicResource BgElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="6,2"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="LblCourseBadge"
+                                       Text="CS201"
+                                       FontSize="10.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                        </Border>
+
+                        <Border x:Name="DeadlineBadgeBorder"
+                                Background="{DynamicResource BgElevatedBrush}"
+                                BorderBrush="{DynamicResource AccentSuccessBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="6,2"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="LblDeadlineBadge"
+                                       Text="ON TIME"
+                                       FontSize="10.5"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- center-right: view switcher -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                        <Button x:Name="BtnSubViewCode"
+                                Content="Code Editor"
+                                Padding="9,3"
+                                Margin="0,0,4,0"
+                                Click="BtnSubViewCode_Click" />
+                        <Button x:Name="BtnSubViewCommits"
+                                Content="Commits &amp; Pushes"
+                                Padding="9,3"
+                                Margin="0,0,4,0"
+                                Click="BtnSubViewCommits_Click" />
+                        <Button x:Name="BtnSubViewDiscussion"
+                                Content="Discussion"
+                                Padding="9,3"
+                                Margin="0,0,4,0"
+                                Click="BtnSubViewDiscussion_Click" />
+                        <Button x:Name="BtnSubViewGrade"
+                                Content="Rubric Grade"
+                                Padding="9,3"
+                                Click="BtnSubViewGrade_Click" />
+                    </StackPanel>
+
+                    <!-- right: turn in task button -->
+                    <Button x:Name="BtnTurnInToggle"
+                            Grid.Column="3"
+                            Content="Turn In Task"
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Padding="11,4"
+                            Click="BtnTurnInToggle_Click" />
+                </Grid>
+            </Border>
+
+            <!-- row 1: collapsed-by-default expander for clone url, task instructions, and 6 code metrics -->
+            <Expander x:Name="ExpRepoDetails"
+                      Grid.Row="1"
+                      Header="Clone URL, Task Instructions &amp; Code Metrics (Click to expand)"
+                      IsExpanded="False"
+                      Margin="0,0,0,8">
+                <StackPanel Margin="4">
+                    <!-- clone url bar -->
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0"
                                    Text="Clone Command:"
-                                   FontSize="12"
+                                   FontSize="11.5"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}"
-                                   Margin="0,0,8,0" />
+                                   Margin="0,0,8,0"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
                         <TextBox x:Name="TxtCloneCommand"
                                  Grid.Column="1"
                                  IsReadOnly="True"
                                  FontFamily="Consolas"
-                                 FontSize="12.5" />
+                                 FontSize="12"
+                                 Padding="6,3"
+                                 Margin="0,0,8,0" />
                         <Button x:Name="BtnCopyCloneCommand"
-                                Grid.Column="3"
+                                Grid.Column="2"
                                 Content="Copy Clone Command"
-                                Padding="12,5"
+                                Padding="10,3"
                                 Click="BtnCopyCloneCommand_Click" />
                     </Grid>
-                </StackPanel>
-            </Border>
 
-            <!-- 4-tab workstation -->
-            <TabControl Grid.Row="1">
-                <!-- tab 1: files and code -->
-                <TabItem Header="Files &amp; Code">
-                    <Grid Margin="4">
+                    <!-- task instructions / repo description -->
+                    <TextBlock x:Name="LblRepoDescription"
+                               Text="Repository description and task instructions."
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                    <!-- 6 deterministic code metrics counters -->
+                    <WrapPanel>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                            <TextBlock x:Name="LblMetricFiles" Text="Total Files: 0" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                            <TextBlock x:Name="LblMetricSourceLoc" Text="Source LOC: 0" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                            <TextBlock x:Name="LblMetricCommentLoc" Text="Comment LOC: 0" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                            <TextBlock x:Name="LblMetricBlankLoc" Text="Blank LOC: 0" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,0,6,0">
+                            <TextBlock x:Name="LblMetricRatio" Text="Comment Ratio: 0.0%" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                        <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="8,4">
+                            <TextBlock x:Name="LblMetricLang" Text="Primary Language: --" FontSize="11.5" FontWeight="SemiBold" />
+                        </Border>
+                    </WrapPanel>
+                </StackPanel>
+            </Expander>
+
+            <!-- row 2: active sub-view host (90% of vertical screen height!) -->
+            <Grid Grid.Row="2">
+                <!-- SUB-VIEW 0: CODE EDITOR (file tree + +file + full-height editor + commit bar) -->
+                <Grid x:Name="SubViewCodeEditorGrid" Visibility="Visible">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- left file tree + inline [+ File] bar -->
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource BgSurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Text="FILES AT HEAD"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Margin="2,0,0,6"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+
+                            <!-- inline new file creator (visible when student has write permission) -->
+                            <Grid x:Name="NewFileBarGrid" Grid.Row="1" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtNewFilePath"
+                                         Grid.Column="0"
+                                         FontFamily="Consolas"
+                                         FontSize="11.5"
+                                         Padding="5,3"
+                                         Margin="0,0,4,0"
+                                         ToolTip="Enter relative file path (e.g. src/Helper.cs) and click + File" />
+                                <Button x:Name="BtnCreateNewFile"
+                                        Grid.Column="1"
+                                        Content="+ File"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Padding="8,3"
+                                        FontSize="11.5"
+                                        Click="BtnCreateNewFile_Click" />
+                            </Grid>
+
+                            <TreeView x:Name="TvFiles"
+                                      Grid.Row="2"
+                                      SelectedItemChanged="TvFiles_SelectedItemChanged" />
+                        </Grid>
+                    </Border>
+
+                    <!-- right full-height code editor + bottom commit bar -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BgSurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- file path header bar -->
+                            <Border Grid.Row="0"
+                                    Background="{DynamicResource BgElevatedBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="10,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="LblSelectedFilePath"
+                                               Grid.Column="0"
+                                               Text="No file selected"
+                                               FontFamily="Consolas"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                    <Border x:Name="EditorModeBadgeBorder"
+                                            Grid.Column="1"
+                                            Background="{DynamicResource BgSurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            Padding="6,1"
+                                            Margin="0,0,10,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock x:Name="LblEditorModeBadge"
+                                                   Text="EDITABLE"
+                                                   FontFamily="Consolas"
+                                                   FontSize="10"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                    <TextBlock x:Name="LblSelectedFileSize"
+                                               Grid.Column="2"
+                                               Text=""
+                                               FontFamily="Consolas"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextMutedBrush}" />
+                                </Grid>
+                            </Border>
+
+                            <!-- full-height consolas code editor -->
+                            <TextBox x:Name="TxtCodeViewer"
+                                     Grid.Row="1"
+                                     IsReadOnly="False"
+                                     AcceptsReturn="True"
+                                     AcceptsTab="True"
+                                     FontFamily="Consolas"
+                                     FontSize="13"
+                                     Padding="12"
+                                     BorderThickness="0"
+                                     Background="{DynamicResource BgCanvasBrush}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top"
+                                     TextWrapping="NoWrap" />
+
+                            <!-- bottom commit bar (shown when CanPushToRepositoryAsync == true) -->
+                            <Border x:Name="CommitBarBorder"
+                                    Grid.Row="2"
+                                    Background="{DynamicResource BgSurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    Padding="10,7">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Commit Message:"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"
+                                               Foreground="{DynamicResource TextMutedBrush}" />
+                                    <TextBox x:Name="TxtCommitMessage"
+                                             Grid.Column="1"
+                                             Margin="0,0,8,0"
+                                             ToolTip="Describe the change you made to this file" />
+                                    <Button x:Name="BtnCommitChanges"
+                                            Grid.Column="2"
+                                            Content="Commit Changes"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Padding="14,5"
+                                            Click="BtnCommitChanges_Click" />
+                                </Grid>
+                            </Border>
+
+                            <!-- calm read-only banner (shown for peer viewers or locked/expired repos) -->
+                            <Border x:Name="ReadOnlyBannerBorder"
+                                    Grid.Row="2"
+                                    Visibility="Collapsed"
+                                    Background="{DynamicResource BgSurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    Padding="10,6">
+                                <TextBlock x:Name="LblReadOnlyReason"
+                                           Text="Read-Only Mode: Only the repository owner and approved groupmates can edit and commit while the repository is unlocked."
+                                           FontSize="11.5"
+                                           Foreground="{DynamicResource TextMutedBrush}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- SUB-VIEW 1: COMMITS & PUSHES -->
+                <Grid x:Name="SubViewCommitsGrid" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource BgSurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0"
+                                       Text="INDEXED COMMITS (MAIN BRANCH)"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                            <DataGrid x:Name="GridCommits" Grid.Row="1">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="SHA" Binding="{Binding ShortSha}" Width="85" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Message" Binding="{Binding CommitMessage}" Width="*" />
+                                    <DataGridTextColumn Header="Author" Binding="{Binding AuthorName}" Width="125" />
+                                    <DataGridTextColumn Header="Committed At" Binding="{Binding CommittedAtText}" Width="140" FontFamily="Consolas" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BgSurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0"
+                                       Text="PUSH LEDGER (FOR-EACH-REF AUDIT)"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                            <DataGrid x:Name="GridPushes" Grid.Row="1">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding PushId}" Width="45" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Branch" Binding="{Binding BranchRef}" Width="115" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Old SHA" Binding="{Binding OldShortSha}" Width="80" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="New SHA" Binding="{Binding NewShortSha}" Width="80" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Pusher" Binding="{Binding PusherFullName}" Width="120" />
+                                    <DataGridTextColumn Header="Pushed At" Binding="{Binding PushedAtText}" Width="*" FontFamily="Consolas" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- SUB-VIEW 2: DISCUSSION -->
+                <Border x:Name="SubViewDiscussionBorder"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource BgSurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12">
+                    <Grid>
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="REPOSITORY DISCUSSION THREAD"
+                                   FontSize="11.5"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,8"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+
+                        <DataGrid x:Name="GridComments"
+                                  Grid.Row="1"
+                                  Margin="0,0,0,10">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Author" Binding="{Binding AuthorDisplay}" Width="190" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Comment" Binding="{Binding CommentBody}" Width="*" />
+                                <DataGridTextColumn Header="Posted" Binding="{Binding CreatedAtText}" Width="140" FontFamily="Consolas" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtNewComment"
+                                     Grid.Column="0"
+                                     Margin="0,0,8,0"
+                                     ToolTip="Write a comment or question for your groupmates and instructor" />
+                            <Button x:Name="BtnPostComment"
+                                    Grid.Column="1"
+                                    Content="Post Comment"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Padding="14,5"
+                                    Click="BtnPostComment_Click" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- SUB-VIEW 3: RUBRIC GRADE -->
+                <Border x:Name="SubViewGradeBorder"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource BgSurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="18">
+                    <Grid MaxWidth="760" HorizontalAlignment="Left">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <!-- horizontal metrics summary bar -->
-                        <Border Grid.Row="0"
-                                Background="{DynamicResource BgCanvasBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="12,7"
-                                Margin="0,0,0,8">
-                            <WrapPanel Orientation="Horizontal">
-                                <TextBlock x:Name="LblMetricFiles"
-                                           Text="Total Files: 0"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,22,0" />
-                                <TextBlock x:Name="LblMetricSourceLoc"
-                                           Text="Source LOC: 0"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,22,0" />
-                                <TextBlock x:Name="LblMetricCommentLoc"
-                                           Text="Comment LOC: 0"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,22,0" />
-                                <TextBlock x:Name="LblMetricBlankLoc"
-                                           Text="Blank LOC: 0"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,22,0" />
-                                <TextBlock x:Name="LblMetricRatio"
-                                           Text="Comment Ratio: N/A"
-                                           FontWeight="SemiBold" />
-                            </WrapPanel>
-                        </Border>
-
-                        <!-- split grid: file tree on left (240px) + code viewer on right -->
-                        <Grid Grid.Row="1">
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="240" MinWidth="160" />
-                                <ColumnDefinition Width="8" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-
-                            <TreeView x:Name="TvFiles"
-                                      Grid.Column="0"
-                                      SelectedItemChanged="TvFiles_SelectedItemChanged" />
-
-                            <GridSplitter Grid.Column="1"
-                                          Width="8"
-                                          HorizontalAlignment="Stretch"
-                                          Background="Transparent" />
-
-                            <Grid Grid.Column="2">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-                                <Border Grid.Row="0"
-                                        Background="{DynamicResource BgElevatedBrush}"
-                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                        BorderThickness="1,1,1,0"
-                                        Padding="10,5">
-                                    <Grid>
-                                        <TextBlock x:Name="LblSelectedFilePath"
-                                                   Text="No file selected"
-                                                   FontFamily="Consolas"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock x:Name="LblSelectedFileSize"
-                                                   Text=""
-                                                   FontFamily="Consolas"
-                                                   FontSize="11.5"
-                                                   HorizontalAlignment="Right"
-                                                   Foreground="{DynamicResource TextMutedBrush}" />
-                                    </Grid>
-                                </Border>
-                                <TextBox x:Name="TxtCodeViewer"
-                                         Grid.Row="1"
-                                         IsReadOnly="True"
-                                         AcceptsReturn="True"
-                                         VerticalScrollBarVisibility="Auto"
-                                         HorizontalScrollBarVisibility="Auto"
-                                         VerticalContentAlignment="Top"
-                                         FontFamily="Consolas"
-                                         FontSize="13"
-                                         Padding="10"
-                                         Background="{DynamicResource BgCanvasBrush}" />
-                            </Grid>
-                        </Grid>
-                    </Grid>
-                </TabItem>
-
-                <!-- tab 2: commits and push receipts -->
-                <TabItem Header="Commits &amp; Push Receipts">
-                    <Grid Margin="4">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="10" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <GroupBox Grid.Row="0"
-                                  Header="Commit History (HEAD)"
-                                  Foreground="{DynamicResource TextPrimaryBrush}"
-                                  BorderBrush="{DynamicResource BorderSubtleBrush}">
-                            <DataGrid x:Name="GridCommits"
-                                      Margin="4">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="SHA" Binding="{Binding ShortSha}" Width="95" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Message" Binding="{Binding CommitMessage}" Width="*" />
-                                    <DataGridTextColumn Header="Author" Binding="{Binding AuthorName}" Width="140" />
-                                    <DataGridTextColumn Header="Committed At" Binding="{Binding CommittedAtText}" Width="150" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-
-                        <GridSplitter Grid.Row="1"
-                                      Height="10"
-                                      HorizontalAlignment="Stretch"
-                                      Background="Transparent" />
-
-                        <GroupBox Grid.Row="2"
-                                  Header="Server Push Ledger Receipts"
-                                  Foreground="{DynamicResource TextPrimaryBrush}"
-                                  BorderBrush="{DynamicResource BorderSubtleBrush}">
-                            <DataGrid x:Name="GridPushes"
-                                      Margin="4">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Push #" Binding="{Binding PushId}" Width="65" />
-                                    <DataGridTextColumn Header="Branch" Binding="{Binding BranchRef}" Width="110" />
-                                    <DataGridTextColumn Header="Old SHA" Binding="{Binding OldShortSha}" Width="95" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="New SHA" Binding="{Binding NewShortSha}" Width="95" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Pusher" Binding="{Binding PusherFullName}" Width="*" />
-                                    <DataGridTextColumn Header="Pushed At" Binding="{Binding PushedAtText}" Width="150" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-                    </Grid>
-                </TabItem>
-
-                <!-- tab 3: team, tickets and discussion -->
-                <TabItem Header="Team, Tickets &amp; Discussion">
-                    <Grid Margin="4">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="10" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <Border Grid.Row="0"
-                                Background="{DynamicResource BgCanvasBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="10">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-
-                                <Grid Grid.Row="0"
-                                      Margin="0,0,0,8">
-                                    <TextBlock Text="Repository Contributors &amp; Groupmate Access Tickets"
-                                               FontWeight="Bold"
-                                               VerticalAlignment="Center" />
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Right">
-                                        <Button x:Name="BtnRequestGroupmateTicket"
-                                                Content="+ Request Groupmate Ticket"
-                                                Style="{StaticResource PrimaryButtonStyle}"
-                                                Padding="10,4"
-                                                Margin="0,0,6,0"
-                                                Click="BtnRequestGroupmateTicket_Click" />
-                                        <Button x:Name="BtnGrantPeerAccess"
-                                                Content="+ Grant Peer Access"
-                                                Padding="10,4"
-                                                Click="BtnGrantPeerAccess_Click" />
-                                    </StackPanel>
-                                </Grid>
-
-                                <DataGrid x:Name="GridContributors"
-                                          Grid.Row="1">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="110" />
-                                        <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="*" />
-                                        <DataGridTextColumn Header="Team Role" Binding="{Binding TeamRole}" Width="110" />
-                                        <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="130" />
-                                        <DataGridTextColumn Header="Approval Status" Binding="{Binding ApprovalStatus}" Width="120" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </Grid>
-                        </Border>
-
-                        <GridSplitter Grid.Row="1"
-                                      Height="10"
-                                      HorizontalAlignment="Stretch"
-                                      Background="Transparent" />
-
-                        <Border Grid.Row="2"
-                                Background="{DynamicResource BgCanvasBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="10">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0"
-                                           Text="Repository Discussion &amp; Feedback"
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="FACULTY RUBRIC EVALUATION"
+                                           FontSize="14"
+                                           FontWeight="Bold" />
+                                <TextBlock x:Name="LblEvalStatus"
+                                           Text="Status: Pending Faculty Evaluation"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"
+                                           Foreground="{DynamicResource TextMutedBrush}" />
+                            </StackPanel>
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource BgElevatedBrush}"
+                                    BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="14,6">
+                                <TextBlock x:Name="LblEvalTotalScore"
+                                           Text="-- / 100"
+                                           FontSize="18"
                                            FontWeight="Bold"
-                                           Margin="0,0,0,6" />
-
-                                <DataGrid x:Name="GridComments"
-                                          Grid.Row="1"
-                                          Margin="0,0,0,8">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Author" Binding="{Binding AuthorDisplay}" Width="160" />
-                                        <DataGridTextColumn Header="Comment" Binding="{Binding CommentBody}" Width="*" />
-                                        <DataGridTextColumn Header="Posted At" Binding="{Binding CreatedAtText}" Width="145" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-
-                                <Grid Grid.Row="2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="TxtNewComment"
-                                             Grid.Column="0" />
-                                    <Button x:Name="BtnPostComment"
-                                            Grid.Column="2"
-                                            Content="Post Comment"
-                                            Style="{StaticResource PrimaryButtonStyle}"
-                                            Padding="14,5"
-                                            Click="BtnPostComment_Click" />
-                                </Grid>
-                            </Grid>
-                        </Border>
-                    </Grid>
-                </TabItem>
-
-                <!-- tab 4: evaluation and rubric -->
-                <TabItem Header="Evaluation &amp; Rubric">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Margin="6">
-                        <StackPanel>
-                            <Border Background="{DynamicResource BgCanvasBrush}"
-                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="16,12"
-                                    Margin="0,0,0,12">
-                                <Grid>
-                                    <StackPanel>
-                                        <TextBlock Text="Faculty Rubric Evaluation"
-                                                   FontSize="16"
-                                                   FontWeight="Bold" />
-                                        <TextBlock x:Name="LblEvalStatus"
-                                                   Text="Status: Pending Evaluation"
-                                                   FontSize="12.5"
-                                                   Foreground="{DynamicResource TextMutedBrush}"
-                                                   Margin="0,3,0,0" />
-                                    </StackPanel>
-                                    <Border Background="{DynamicResource AccentPrimaryBrush}"
-                                            CornerRadius="6"
-                                            Padding="14,6"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Center">
-                                        <TextBlock x:Name="LblEvalTotalScore"
-                                                   Text="-- / 100"
-                                                   FontSize="16"
-                                                   FontWeight="Bold"
-                                                   Foreground="{DynamicResource TextOnAccentBrush}" />
-                                    </Border>
-                                </Grid>
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
                             </Border>
+                        </Grid>
 
-                            <!-- 4 rubric criteria bars (0-25 each) -->
-                            <Border Background="{DynamicResource BgCanvasBrush}"
-                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="16,12"
-                                    Margin="0,0,0,12">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="1. Architecture &amp; Design" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="LblScoreArch" Text="0 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
-                                    </Grid>
-                                    <ProgressBar x:Name="BarScoreArch" Minimum="0" Maximum="25" Height="12" Margin="0,0,0,12" />
+                        <Grid Grid.Row="1" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170" />
+                                <ColumnDefinition Width="340" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="32" />
+                                <RowDefinition Height="32" />
+                                <RowDefinition Height="32" />
+                                <RowDefinition Height="32" />
+                            </Grid.RowDefinitions>
 
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="2. Functionality &amp; Completeness" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="LblScoreFunc" Text="0 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
-                                    </Grid>
-                                    <ProgressBar x:Name="BarScoreFunc" Minimum="0" Maximum="25" Height="12" Margin="0,0,0,12" />
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Architecture (25):" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ProgressBar x:Name="BarScoreArch" Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="25" Height="12" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock x:Name="LblScoreArch" Grid.Row="0" Grid.Column="2" Text="0 / 25" VerticalAlignment="Center" FontFamily="Consolas" />
 
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="3. Code Quality &amp; Conventions" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="LblScoreQual" Text="0 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
-                                    </Grid>
-                                    <ProgressBar x:Name="BarScoreQual" Minimum="0" Maximum="25" Height="12" Margin="0,0,0,12" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Functionality (25):" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ProgressBar x:Name="BarScoreFunc" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="25" Height="12" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock x:Name="LblScoreFunc" Grid.Row="1" Grid.Column="2" Text="0 / 25" VerticalAlignment="Center" FontFamily="Consolas" />
 
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="4. Documentation &amp; Git Hygiene" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="LblScoreDoc" Text="0 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
-                                    </Grid>
-                                    <ProgressBar x:Name="BarScoreDoc" Minimum="0" Maximum="25" Height="12" />
-                                </StackPanel>
-                            </Border>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Code Quality (25):" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ProgressBar x:Name="BarScoreQual" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="25" Height="12" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock x:Name="LblScoreQual" Grid.Row="2" Grid.Column="2" Text="0 / 25" VerticalAlignment="Center" FontFamily="Consolas" />
 
-                            <TextBlock Text="Faculty Evaluation Notes"
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Documentation (25):" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ProgressBar x:Name="BarScoreDoc" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="25" Height="12" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock x:Name="LblScoreDoc" Grid.Row="3" Grid.Column="2" Text="0 / 25" VerticalAlignment="Center" FontFamily="Consolas" />
+                        </Grid>
+
+                        <StackPanel Grid.Row="2">
+                            <TextBlock Text="FACULTY CRITIQUE NOTES"
+                                       FontSize="11.5"
                                        FontWeight="Bold"
-                                       Margin="0,0,0,6" />
+                                       Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
                             <TextBox x:Name="TxtEvalNotes"
                                      IsReadOnly="True"
-                                     AcceptsReturn="True"
                                      TextWrapping="Wrap"
-                                     MinHeight="110"
+                                     AcceptsReturn="True"
+                                     MinHeight="120"
                                      VerticalContentAlignment="Top"
                                      Padding="10"
                                      Background="{DynamicResource BgCanvasBrush}" />
                         </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
