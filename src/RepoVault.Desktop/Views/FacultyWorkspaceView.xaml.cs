@@ -26,6 +26,7 @@ public partial class FacultyWorkspaceView : UserControl
     private readonly List<RepositoryRecord> _submissions = new();
     private readonly List<CodingTask> _tasks = new();
     private readonly List<ContributorViewDto> _tickets = new();
+    private readonly List<ContributorViewDto> _inspectorTeam = new();
     private readonly List<RepositoryRecord> _trashed = new();
     private readonly List<DiscussionCommentViewDto> _comments = new();
     private readonly Dictionary<int, string> _userLookup = new();
@@ -34,7 +35,7 @@ public partial class FacultyWorkspaceView : UserControl
     private RepositoryRecord? _selectedRepo;
     private bool _isLoading;
     private int _activePageIndex;
-    private int _activeInspSubViewIndex;
+    private int _activeInspPanelTabIndex;
 
     public FacultyWorkspaceView() : this(new AppSession(), null, null, null, null, null)
     {
@@ -55,7 +56,7 @@ public partial class FacultyWorkspaceView : UserControl
         _updateNavHighlight = updateNavHighlight;
         _updatePendingTicketsBadge = updatePendingTicketsBadge;
         InitializeComponent();
-        HighlightInspSubViewButton(0);
+        SwitchBottomPanelTab(0);
     }
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -91,6 +92,18 @@ public partial class FacultyWorkspaceView : UserControl
         };
 
         _updateNavHighlight?.Invoke(_activePageIndex);
+    }
+
+    public void ToggleBottomPanel()
+    {
+        if (DedicatedInspectorGrid.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        BottomPanelBorder.Visibility = BottomPanelBorder.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     public async Task LoadCoursesAsync()
@@ -336,6 +349,16 @@ public partial class FacultyWorkspaceView : UserControl
         BtnRejectTicket.IsEnabled = isGroupTicket;
     }
 
+    private void UpdateInspectorTeamButtonsState()
+    {
+        bool isGroupTicket = GridInspectorTeam.SelectedIndex >= 0 &&
+                             GridInspectorTeam.SelectedIndex < _inspectorTeam.Count &&
+                             _inspectorTeam[GridInspectorTeam.SelectedIndex].AccessLevel == AccessLevel.GroupCollaborator;
+
+        BtnInspApproveTicket.IsEnabled = isGroupTicket;
+        BtnInspRejectTicket.IsEnabled = isGroupTicket;
+    }
+
     private static string ComputeDeadlineStatus(RepositoryRecord r)
     {
         if (!r.DeadlineUtc.HasValue)
@@ -356,60 +379,53 @@ public partial class FacultyWorkspaceView : UserControl
         TopLevelPagesRoot.Visibility = Visibility.Collapsed;
         DedicatedInspectorGrid.Visibility = Visibility.Visible;
         _setSidebarCollapsed?.Invoke(true);
-        SwitchInspSubView(0);
         await InspectSubmissionAsync(repo);
     }
 
-    private void SwitchInspSubView(int subViewIdx)
+    private void SwitchBottomPanelTab(int tabIdx)
     {
-        _activeInspSubViewIndex = Math.Clamp(subViewIdx, 0, 2);
-        InspSubCodeGrid.Visibility = _activeInspSubViewIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
-        InspSubCommitsGrid.Visibility = _activeInspSubViewIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
-        InspSubDiscussionsBorder.Visibility = _activeInspSubViewIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
-        HighlightInspSubViewButton(_activeInspSubViewIndex);
-    }
+        _activeInspPanelTabIndex = Math.Clamp(tabIdx, 0, 3);
+        GridInspectorUnifiedCommits.Visibility = _activeInspPanelTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        InspPanelDiscussionsGrid.Visibility = _activeInspPanelTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        InspPanelTeamGrid.Visibility = _activeInspPanelTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        InspPanelRubricGrid.Visibility = _activeInspPanelTabIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
 
-    private void HighlightInspSubViewButton(int activeIdx)
-    {
-        Button[] buttons = [BtnInspSubCode, BtnInspSubCommits, BtnInspSubDiscussions];
-        for (int i = 0; i < buttons.Length; i++)
+        Button[] tabs = [BtnInspPanelTabCommits, BtnInspPanelTabDiscussions, BtnInspPanelTabTeam, BtnInspPanelTabRubric];
+        for (int i = 0; i < tabs.Length; i++)
         {
-            bool isSelected = i == activeIdx;
-            buttons[i].BorderBrush = isSelected
+            bool active = i == _activeInspPanelTabIndex;
+            tabs[i].BorderBrush = active
                 ? (Brush)FindResource("AccentPrimaryBrush")
-                : (Brush)FindResource("BorderSubtleBrush");
-            buttons[i].FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
+                : Brushes.Transparent;
+            tabs[i].Foreground = active
+                ? (Brush)FindResource("TextPrimaryBrush")
+                : (Brush)FindResource("TextMutedBrush");
+            tabs[i].FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
         }
     }
 
     private async Task InspectSubmissionAsync(RepositoryRecord repo)
     {
         _selectedRepo = repo;
-        string ownerText = repo.OwnerStudentId.HasValue && _userLookup.TryGetValue(repo.OwnerStudentId.Value, out string? name)
-            ? name
-            : "Student";
+        LblInspectorSlugTitle.Text = repo.RepoSlug;
+        HeaderLockIcon.Visibility = repo.IsLocked ? Visibility.Visible : Visibility.Collapsed;
 
-        LblInspectorHeader.Text = $"Inspecting: {repo.RepoSlug} by {ownerText}";
-        LblInspLockBadge.Text = repo.IsLocked ? "LOCKED" : "OPEN";
-        InspLockBadgeBorder.BorderBrush = repo.IsLocked
-            ? (Brush)FindResource("AccentWarningBrush")
-            : (Brush)FindResource("AccentSuccessBrush");
-        BtnLockUnlockRepo.Content = repo.IsLocked ? "Unlock Repo" : "Lock Repo";
+        string iconKey = repo.IsLocked ? "IconUnlock" : "IconLock";
+        if (TryFindResource(iconKey) is Geometry lockGeo)
+        {
+            LockToggleIconPath.Data = lockGeo;
+        }
 
-        string ip = LanHelper.GetPreferredLanIpv4Address();
-        string cloneUrl = LanHelper.BuildCloneUrl(repo.RepoSlug, _session.ServerPort, ip);
-        TxtInspectorCloneUrl.Text = cloneUrl;
+        BtnLockUnlockRepo.ToolTip = repo.IsLocked ? "Unlock Repository" : "Lock Repository";
 
-        LblInspFiles.Text = $"Total Files: {repo.TotalFiles}";
-        LblInspSloc.Text = $"Source LOC: {repo.SourceLines:N0}";
-        LblInspComments.Text = $"Comment LOC: {repo.CommentLines:N0}";
-        LblInspBlanks.Text = $"Blank LOC: {repo.BlankLines:N0}";
-        LblInspPrimaryLang.Text = $"Primary Language: {repo.PrimaryLanguage ?? "None"}";
+        double ratio = repo.SourceLines > 0 ? (double)repo.CommentLines / repo.SourceLines * 100.0 : 0.0;
+        LblInspMetricSummaryLine.Text =
+            $"{repo.TotalFiles} Files  |  {repo.SourceLines:N0} Source LOC  |  {repo.CommentLines:N0} Comments ({ratio:F1}%)  |  {repo.BlankLines:N0} Blanks";
 
         await LoadInspectorFilesAsync(repo);
-        await LoadInspectorCommitsAndPushesAsync(repo);
-        await LoadInspectorLanguagesAsync(repo);
-        await LoadInspectorDiscussionsAsync(repo);
+        await LoadInspectorUnifiedCommitsAsync(repo);
+        await LoadInspectorTeamAndDiscussionsAsync(repo);
+        await LoadInspectorRubricAndLanguagesAsync(repo);
     }
 
     private async Task LoadInspectorFilesAsync(RepositoryRecord repo)
@@ -417,14 +433,14 @@ public partial class FacultyWorkspaceView : UserControl
         TvInspectorFiles.Items.Clear();
         TxtInspectorCode.Text = string.Empty;
         LblInspectorFilePath.Text = "No file selected";
-        LblInspectorFileSize.Text = string.Empty;
 
         try
         {
             List<RepoFileEntry> files = await _session.Browser.ListFilesAtHeadAsync(repo.BareRepoDiskPath);
             var root = new TreeViewItem
             {
-                Header = repo.RepoSlug,
+                Header = App.CreateExplorerNodeHeader(repo.RepoSlug, repo.RepoSlug, true),
+                Tag = repo.RepoSlug,
                 IsExpanded = true,
             };
 
@@ -438,14 +454,15 @@ public partial class FacultyWorkspaceView : UserControl
                     bool isLeaf = i == parts.Length - 1;
                     string segment = parts[i];
                     TreeViewItem? existing = current.Items.OfType<TreeViewItem>()
-                        .FirstOrDefault(item => string.Equals(item.Header?.ToString(), segment, StringComparison.Ordinal));
+                        .FirstOrDefault(item =>
+                            item.Tag is string folderSeg && string.Equals(folderSeg, segment, StringComparison.Ordinal));
 
                     if (existing is null)
                     {
                         existing = new TreeViewItem
                         {
-                            Header = segment,
-                            Tag = isLeaf ? f : null,
+                            Header = App.CreateExplorerNodeHeader(segment, f.Path, !isLeaf),
+                            Tag = isLeaf ? (object)f : segment,
                             IsExpanded = true,
                         };
                         current.Items.Add(existing);
@@ -481,8 +498,8 @@ public partial class FacultyWorkspaceView : UserControl
                 return;
             }
 
+            LblInspectorFileIcon.Text = App.GetFileIconGlyph(file.Path, false);
             LblInspectorFilePath.Text = file.Path;
-            LblInspectorFileSize.Text = $"{file.SizeBytes:N0} bytes";
             try
             {
                 RepoBlobContent blob = await _session.Browser.ReadFileBlobAuthorizedAsync(
@@ -496,38 +513,53 @@ public partial class FacultyWorkspaceView : UserControl
         }
     }
 
-    private async Task LoadInspectorCommitsAndPushesAsync(RepositoryRecord repo)
+    private async Task LoadInspectorUnifiedCommitsAsync(RepositoryRecord repo)
     {
         List<CommitLogEntry> commits = await _session.Repos.ListCommitLogsAsync(repo.RepoId);
-        GridInspectorCommits.ItemsSource = commits.Select(c => new InspectorCommitRow(
-            c.CommitHash.Length >= 8 ? c.CommitHash[..8] : c.CommitHash,
-            c.CommitMessage,
-            c.AuthorName,
-            c.CommittedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))).ToList();
-
         List<PushLedgerViewDto> pushes = await _session.Repos.ListPushLedgerViewAsync(repo.RepoId);
-        GridInspectorPushes.ItemsSource = pushes.Select(p => new InspectorPushRow(
-            p.PushId,
-            p.BranchRef,
-            p.NewCommitHash.Length >= 8 ? p.NewCommitHash[..8] : p.NewCommitHash,
-            p.PusherFullName,
-            p.PushedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))).ToList();
+
+        var pushByNewSha = new Dictionary<string, PushLedgerViewDto>(StringComparer.OrdinalIgnoreCase);
+        foreach (PushLedgerViewDto p in pushes)
+        {
+            pushByNewSha.TryAdd(p.NewCommitHash, p);
+        }
+
+        var rows = new List<UnifiedCommitRow>();
+        foreach (CommitLogEntry c in commits)
+        {
+            string shortSha = c.CommitHash.Length >= 8 ? c.CommitHash[..8] : c.CommitHash;
+            DateTime timestampUtc = pushByNewSha.TryGetValue(c.CommitHash, out PushLedgerViewDto? push)
+                ? push.PushedAt
+                : c.CommittedAt;
+
+            string timeliness = !repo.DeadlineUtc.HasValue || timestampUtc <= repo.DeadlineUtc.Value
+                ? "ON TIME"
+                : "LATE";
+
+            rows.Add(new UnifiedCommitRow(
+                shortSha,
+                c.CommitMessage,
+                c.AuthorName,
+                timestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                timeliness));
+        }
+
+        GridInspectorUnifiedCommits.ItemsSource = rows;
     }
 
-    private async Task LoadInspectorLanguagesAsync(RepositoryRecord repo)
+    private async Task LoadInspectorTeamAndDiscussionsAsync(RepositoryRecord repo)
     {
-        List<RepositoryLanguage> langs = await _session.Repos.ListLanguagesAsync(repo.RepoId);
-        GridInspectorLanguages.ItemsSource = langs.Select(l => new InspectorLangRow(
-            l.LanguageName,
-            l.FileCount,
-            l.SourceLines,
-            l.CommentLines,
-            l.BlankLines,
-            $"{l.PercentageShare:F1}%")).ToList();
-    }
+        _inspectorTeam.Clear();
+        _inspectorTeam.AddRange(await _session.Contributors.ListContributorViewsByRepoAsync(repo.RepoId));
+        GridInspectorTeam.ItemsSource = null;
+        GridInspectorTeam.ItemsSource = _inspectorTeam;
+        if (_inspectorTeam.Count > 0 && GridInspectorTeam.SelectedIndex < 0)
+        {
+            GridInspectorTeam.SelectedIndex = 0;
+        }
 
-    private async Task LoadInspectorDiscussionsAsync(RepositoryRecord repo)
-    {
+        UpdateInspectorTeamButtonsState();
+
         _comments.Clear();
         _comments.AddRange(await _session.Discussions.ListCommentViewsByRepoAsync(repo.RepoId, true));
         GridInspectorDiscussions.ItemsSource = _comments.Select(cm => new InspectorCommentRow(
@@ -539,22 +571,69 @@ public partial class FacultyWorkspaceView : UserControl
             cm.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))).ToList();
     }
 
+    private async Task LoadInspectorRubricAndLanguagesAsync(RepositoryRecord repo)
+    {
+        EvaluationRecord? eval = await _session.Evaluations.GetEvaluationByRepoAsync(repo.RepoId);
+        if (eval is not null)
+        {
+            LblInspEvalTotalScore.Text = $"Total: {eval.TotalScore} / 100";
+            LblInspScoreArch.Text = $"Arch: {eval.ArchitectureScore}/25";
+            LblInspScoreFunc.Text = $"Func: {eval.FunctionalityScore}/25";
+            LblInspScoreQual.Text = $"Qual: {eval.CodeQualityScore}/25";
+            LblInspScoreDoc.Text = $"Doc: {eval.DocumentationScore}/25";
+            TxtInspEvalNotes.Text = string.IsNullOrWhiteSpace(eval.CritiqueNotes)
+                ? "No faculty critique notes provided."
+                : eval.CritiqueNotes;
+        }
+        else
+        {
+            LblInspEvalTotalScore.Text = "Total: -- / 100";
+            LblInspScoreArch.Text = "Arch: 0/25";
+            LblInspScoreFunc.Text = "Func: 0/25";
+            LblInspScoreQual.Text = "Qual: 0/25";
+            LblInspScoreDoc.Text = "Doc: 0/25";
+            TxtInspEvalNotes.Text = "Not graded yet. Click 'Grade Rubric' in the header to evaluate.";
+        }
+
+        List<RepositoryLanguage> langs = await _session.Repos.ListLanguagesAsync(repo.RepoId);
+        GridInspectorLanguages.ItemsSource = langs.Select(l => new InspectorLangRow(
+            l.LanguageName,
+            l.FileCount,
+            l.SourceLines,
+            l.CommentLines,
+            $"{l.PercentageShare:F1}%")).ToList();
+    }
+
     private void BtnToggleSidebar_Click(object sender, RoutedEventArgs e)
     {
         _toggleSidebar?.Invoke();
     }
+
+    private void BtnToggleExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        InspectorExplorerBorder.Visibility = InspectorExplorerBorder.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void BtnToggleBottomPanel_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleBottomPanel();
+    }
+
+    private void BtnInspPanelTabCommits_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(0);
+
+    private void BtnInspPanelTabDiscussions_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(1);
+
+    private void BtnInspPanelTabTeam_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(2);
+
+    private void BtnInspPanelTabRubric_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(3);
 
     private async void BtnBackToSubmissions_Click(object sender, RoutedEventArgs e)
     {
         NavigateToPage(1);
         await RefreshDataAsync();
     }
-
-    private void BtnInspSubCode_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(0);
-
-    private void BtnInspSubCommits_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(1);
-
-    private void BtnInspSubDiscussions_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(2);
 
     private async void BtnInspectSubmissionRow_Click(object sender, RoutedEventArgs e)
     {
@@ -619,6 +698,11 @@ public partial class FacultyWorkspaceView : UserControl
     private void GridTickets_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         UpdateTicketActionButtonsState();
+    }
+
+    private void GridInspectorTeam_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateInspectorTeamButtonsState();
     }
 
     private async void BtnRefreshCourse_Click(object sender, RoutedEventArgs e)
@@ -760,8 +844,6 @@ public partial class FacultyWorkspaceView : UserControl
     {
         if (_selectedRepo is null)
         {
-            MessageBox.Show("Select a student submission to grade.", "Grade Rubric",
-                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -868,7 +950,7 @@ public partial class FacultyWorkspaceView : UserControl
         await RefreshDataAsync();
     }
 
-    private void BtnCopyCloneUrl_Click(object sender, RoutedEventArgs e)
+    private async void BtnCopyCloneUrl_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedRepo is null)
         {
@@ -877,10 +959,27 @@ public partial class FacultyWorkspaceView : UserControl
 
         string ip = LanHelper.GetPreferredLanIpv4Address();
         string url = LanHelper.BuildCloneUrl(_selectedRepo.RepoSlug, _session.ServerPort, ip);
+        string cmd = $"git clone {url}";
+
         try
         {
-            Clipboard.SetText(url);
-            ReportStatus("Copied read-only clone URL to clipboard: " + url);
+            Clipboard.SetText(cmd);
+            ReportStatus("Copied: " + cmd);
+
+            if (TryFindResource("IconCheck") is Geometry checkGeo)
+            {
+                CloneBtnIconPath.Data = checkGeo;
+            }
+
+            LblCloneBtnText.Text = "Copied";
+            await Task.Delay(1500);
+
+            if (TryFindResource("IconCopy") is Geometry copyGeo)
+            {
+                CloneBtnIconPath.Data = copyGeo;
+            }
+
+            LblCloneBtnText.Text = "Clone";
         }
         catch (Exception ex)
         {
@@ -917,12 +1016,20 @@ public partial class FacultyWorkspaceView : UserControl
         await ReviewSelectedTicketAsync(false);
     }
 
+    private async void BtnInspApproveTicket_Click(object sender, RoutedEventArgs e)
+    {
+        await ReviewInspectorSelectedTicketAsync(true);
+    }
+
+    private async void BtnInspRejectTicket_Click(object sender, RoutedEventArgs e)
+    {
+        await ReviewInspectorSelectedTicketAsync(false);
+    }
+
     private async Task ReviewSelectedTicketAsync(bool approve)
     {
         if (GridTickets.SelectedIndex < 0 || GridTickets.SelectedIndex >= _tickets.Count)
         {
-            MessageBox.Show("Select a groupmate ticket from the table first.",
-                "Groupmate Tickets", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -946,6 +1053,35 @@ public partial class FacultyWorkspaceView : UserControl
             ? $"Approved groupmate ticket for {ticket.FullName}."
             : $"Rejected groupmate ticket for {ticket.FullName}.");
         await RefreshDataAsync();
+    }
+
+    private async Task ReviewInspectorSelectedTicketAsync(bool approve)
+    {
+        if (GridInspectorTeam.SelectedIndex < 0 || GridInspectorTeam.SelectedIndex >= _inspectorTeam.Count)
+        {
+            return;
+        }
+
+        User? actor = _session.GetCurrentUserEntity();
+        if (actor is null)
+        {
+            return;
+        }
+
+        ContributorViewDto ticket = _inspectorTeam[GridInspectorTeam.SelectedIndex];
+        var (ok, message) = await _session.Contributors.ReviewGroupmateTicketAsync(
+            actor, ticket.RepoId, ticket.StudentUserId, approve);
+
+        if (!ok)
+        {
+            MessageBox.Show(message, "Team & Access", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        await RefreshDataAsync();
+        ReportStatus(approve
+            ? $"Approved groupmate ticket for {ticket.FullName}."
+            : $"Rejected groupmate ticket for {ticket.FullName}.");
     }
 
     private async void BtnPostFacultyComment_Click(object sender, RoutedEventArgs e)
@@ -978,7 +1114,7 @@ public partial class FacultyWorkspaceView : UserControl
             }
 
             TxtFacultyComment.Clear();
-            await LoadInspectorDiscussionsAsync(_selectedRepo);
+            await LoadInspectorTeamAndDiscussionsAsync(_selectedRepo);
             ReportStatus("Posted faculty feedback comment.");
         }
         finally
@@ -1010,7 +1146,7 @@ public partial class FacultyWorkspaceView : UserControl
             return;
         }
 
-        await LoadInspectorDiscussionsAsync(_selectedRepo);
+        await LoadInspectorTeamAndDiscussionsAsync(_selectedRepo);
         ReportStatus(nextHidden ? "Comment hidden by moderation." : "Comment restored to visible.");
     }
 
@@ -1030,14 +1166,11 @@ public partial class FacultyWorkspaceView : UserControl
         int RepoId, int StudentUserId, string RepoSlug, string StudentDisplay,
         string TeamRole, string AccessLevel, string ApprovalStatus);
 
-    private sealed record InspectorCommitRow(
-        string ShortSha, string CommitMessage, string AuthorName, string CommittedAtText);
-
-    private sealed record InspectorPushRow(
-        int PushId, string BranchRef, string NewShortSha, string PusherFullName, string PushedAtText);
+    private sealed record UnifiedCommitRow(
+        string ShortSha, string CommitMessage, string AuthorName, string TimestampText, string TimelinessText);
 
     private sealed record InspectorLangRow(
-        string LanguageName, int FileCount, int SourceLines, int CommentLines, int BlankLines, string ShareText);
+        string LanguageName, int FileCount, int SourceLines, int CommentLines, string ShareText);
 
     private sealed record InspectorCommentRow(
         int CommentId, string AuthorFullName, string AuthorRole, string CommentBody, string VisibilityText, string CreatedAtText);
