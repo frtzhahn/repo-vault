@@ -2,7 +2,7 @@
 
 <img src="https://github.com/user-attachments/assets/55d7af5b-1ab6-4d63-b154-b57562bfb740" />
 
-<sub style="font-weight: bold;"> Local Git archive server and academic repository catalog for CSD students from UCC built with C# Windows Forms (.NET 10) and MySQL/MariaDB (XAMPP) </sub>
+<sub style="font-weight: bold;"> Local Git archive server and academic repository catalog for CSD students from UCC built with C# WPF (.NET 8 LTS, Gruvbox Theme) and MySQL/MariaDB (XAMPP) </sub>
 </div>
 <br><br>
 
@@ -14,15 +14,15 @@ Repo Vault provides a local area Git HTTP server and desktop workstation for arc
 
 Before cloning and building the project, make sure the following tools are installed on your machine:
 
-1. **.NET 10 SDK** (`10.0.100` or newer) - verify with `dotnet --version` or `dotnet --info`
+1. **.NET 8 LTS SDK** (`8.0` or newer) - verify with `dotnet --version` or `dotnet --info`
 2. **XAMPP** (with MySQL/MariaDB service running on port `3306`)
 3. **Git CLI** (`git.exe` on Windows or `git` on Linux) added to your system PATH
-4. **Visual Studio 2022/2026** (with .NET Desktop Development workload) or **Neovim / VS Code**
+4. **Visual Studio 2022** (with .NET Desktop Development workload, open `RepoVault.sln`) or **Neovim / VS Code**
 
 ## Project Structure (monorepo)
 
 - `src/RepoVault.Core` - Database access (MariaDB), RBAC authentication, Git HTTP server (`HttpListener`), and static code metrics scanner
-- `src/RepoVault.Desktop` - Windows Forms desktop client built with standard Visual Studio Toolbox controls
+- `src/RepoVault.Desktop` - Native WPF desktop client (`.NET 8`, Gruvbox Light/Dark dynamic theme, Version B Classroom UX)
 - `tests/RepoVault.Tests` - Unit tests for database queries, line counting, and server handlers.
 - `database/schema.sql` - SQL script to initialize the `repo_vault_db` schema in phpMyAdmin or MariaDB CLI.
 
@@ -42,9 +42,8 @@ kanban
     [ui: login, register, student explorer]@{ assigned: 'TBD', ticket: '#12' }
     [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
     [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
-    [desktop: faculty workspace, rubric grading, and repo bin]@{ assigned: 'Aldrin', ticket: '#35' }
   [In Progress]
-    [Faculty Admin & Grading UI Implementation]@{ assigned: 'Aldrin' }
+    [Live LAN Smoke Test & Final Demo Prep]@{ assigned: 'Aldrin' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
     [db: mariadb schema and entity models]@{ assigned: 'Aldrin', ticket: '#3' }
@@ -60,6 +59,8 @@ kanban
     [db: bare git repo workspace seeder]@{ assigned: 'Aldrin', ticket: '#21' }
     [core: classroom tasks and access tickets]@{ assigned: 'Aldrin', ticket: '#31' }
     [desktop: student workspace control and coding interface]@{ assigned: 'Aldrin', ticket: '#33' }
+    [desktop: faculty workspace, rubric grading, and repo bin]@{ assigned: 'Aldrin', ticket: '#35' }
+    [desktop: migrate solution to .net 8 and rebuild ui in wpf with gruvbox theme]@{ assigned: 'Aldrin', ticket: '#37' }
   [Done]
     [Project Skeleton & Desktop Scaffold]@{ assigned: 'Aldrin' }
     [Database Schema & Entity Models]@{ assigned: 'Aldrin' }
@@ -72,6 +73,8 @@ kanban
     [WinForms Auth & Main Shell]@{ assigned: 'Aldrin' }
     [Classroom Coding Tasks & Access Tickets]@{ assigned: 'Aldrin' }
     [Student Workspace UI Implementation]@{ assigned: 'Aldrin' }
+    [Faculty Admin & Grading UI Implementation]@{ assigned: 'Aldrin' }
+    [WPF Gruvbox Workstation & .NET 8 LTS Migration]@{ assigned: 'Aldrin' }
 ```
 
 ## Contribution Guide for Members
