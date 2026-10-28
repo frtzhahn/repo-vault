@@ -1,0 +1,155 @@
+<Window x:Class="RepoVault.Desktop.Views.GradeRubricWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Grade Repository Rubric"
+        Width="560"
+        Height="640"
+        MinWidth="500"
+        MinHeight="580"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgCanvasBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid Margin="20">
+        <Border Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="22,18">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- header -->
+                <Grid Grid.Row="0"
+                      Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="LblRepoHeader"
+                                   Text="Grade Repository"
+                                   FontSize="19"
+                                   FontWeight="Bold" />
+                        <TextBlock x:Name="LblCourseAndOwner"
+                                   Text="Course: --  |  Owner: --"
+                                   FontSize="12.5"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <Border Background="{DynamicResource AccentPrimaryBrush}"
+                            CornerRadius="6"
+                            Padding="14,6"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="LblTotalScore"
+                                   Text="Total: 80 / 100"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextOnAccentBrush}" />
+                    </Border>
+                </Grid>
+
+                <!-- metrics summary strip -->
+                <Border Grid.Row="1"
+                        Background="{DynamicResource BgCanvasBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12,7"
+                        Margin="0,0,0,14">
+                    <TextBlock x:Name="LblMetricsSummary"
+                               Text="Code Metrics: 0 Source LOC  |  0 Comment LOC  |  0 Blank LOC  |  0 Files"
+                               FontSize="12"
+                               FontWeight="SemiBold" />
+                </Border>
+
+                <!-- 4 sliders (0..25) -->
+                <Border Grid.Row="2"
+                        Background="{DynamicResource BgCanvasBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="14,12"
+                        Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,2">
+                            <TextBlock Text="1. Architecture &amp; Design (0 - 25)" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LblValArch" Text="20 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
+                        </Grid>
+                        <Slider x:Name="SldArch" Minimum="0" Maximum="25" Value="20" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,10" ValueChanged="Slider_ValueChanged" />
+
+                        <Grid Margin="0,0,0,2">
+                            <TextBlock Text="2. Functionality &amp; Completeness (0 - 25)" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LblValFunc" Text="20 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
+                        </Grid>
+                        <Slider x:Name="SldFunc" Minimum="0" Maximum="25" Value="20" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,10" ValueChanged="Slider_ValueChanged" />
+
+                        <Grid Margin="0,0,0,2">
+                            <TextBlock Text="3. Code Quality &amp; Conventions (0 - 25)" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LblValQual" Text="20 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
+                        </Grid>
+                        <Slider x:Name="SldQual" Minimum="0" Maximum="25" Value="20" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,10" ValueChanged="Slider_ValueChanged" />
+
+                        <Grid Margin="0,0,0,2">
+                            <TextBlock Text="4. Documentation &amp; Git Hygiene (0 - 25)" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LblValDoc" Text="20 / 25" HorizontalAlignment="Right" FontWeight="Bold" />
+                        </Grid>
+                        <Slider x:Name="SldDoc" Minimum="0" Maximum="25" Value="20" IsSnapToTickEnabled="True" TickFrequency="1" ValueChanged="Slider_ValueChanged" />
+                    </StackPanel>
+                </Border>
+
+                <!-- evaluation notes -->
+                <Grid Grid.Row="3"
+                      Margin="0,0,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0"
+                               Text="Evaluation &amp; Critique Notes"
+                               FontSize="12.5"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,4" />
+                    <TextBox x:Name="TxtCritiqueNotes"
+                             Grid.Row="1"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
+                             Padding="8" />
+                </Grid>
+
+                <!-- lock checkbox -->
+                <CheckBox x:Name="ChkLockAfterSave"
+                          Grid.Row="4"
+                          Content="Lock repository after saving (freeze further git pushes)"
+                          IsChecked="True"
+                          Margin="0,0,0,14" />
+
+                <!-- buttons -->
+                <StackPanel Grid.Row="5"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button x:Name="BtnCancel"
+                            Content="Cancel"
+                            Width="95"
+                            Margin="0,0,8,0"
+                            IsCancel="True"
+                            Click="BtnCancel_Click" />
+                    <Button x:Name="BtnSaveRubric"
+                            Content="Save Rubric"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="135"
+                            IsDefault="True"
+                            Click="BtnSaveRubric_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

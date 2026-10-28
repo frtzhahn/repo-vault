@@ -642,6 +642,11 @@ public sealed class AuthAndRbacTests
             {
                 if (Directory.Exists(work))
                 {
+                    foreach (string file in Directory.GetFiles(work, "*", SearchOption.AllDirectories))
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                    }
+
                     Directory.Delete(work, true);
                 }
             }
