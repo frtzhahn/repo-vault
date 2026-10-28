@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using RepoVault.Core.GitServer;
 using RepoVault.Core.Models;
 using RepoVault.Desktop.AppState;
@@ -15,25 +17,45 @@ public partial class FacultyWorkspaceView : UserControl
 {
     private readonly AppSession _session;
     private readonly Action<string>? _setStatus;
+    private readonly Action? _toggleSidebar;
+    private readonly Action<bool>? _setSidebarCollapsed;
+    private readonly Action<int>? _updateNavHighlight;
+    private readonly Action<int>? _updatePendingTicketsBadge;
+
     private readonly List<Course> _courses = new();
     private readonly List<RepositoryRecord> _submissions = new();
     private readonly List<CodingTask> _tasks = new();
     private readonly List<ContributorViewDto> _tickets = new();
+    private readonly List<RepositoryRecord> _trashed = new();
     private readonly List<DiscussionCommentViewDto> _comments = new();
     private readonly Dictionary<int, string> _userLookup = new();
+
     private Course? _selectedCourse;
     private RepositoryRecord? _selectedRepo;
     private bool _isLoading;
+    private int _activePageIndex;
+    private int _activeInspSubViewIndex;
 
-    public FacultyWorkspaceView() : this(new AppSession(), null)
+    public FacultyWorkspaceView() : this(new AppSession(), null, null, null, null, null)
     {
     }
 
-    public FacultyWorkspaceView(AppSession session, Action<string>? setStatus = null)
+    public FacultyWorkspaceView(
+        AppSession session,
+        Action<string>? setStatus = null,
+        Action? toggleSidebar = null,
+        Action<bool>? setSidebarCollapsed = null,
+        Action<int>? updateNavHighlight = null,
+        Action<int>? updatePendingTicketsBadge = null)
     {
         _session = session;
         _setStatus = setStatus;
+        _toggleSidebar = toggleSidebar;
+        _setSidebarCollapsed = setSidebarCollapsed;
+        _updateNavHighlight = updateNavHighlight;
+        _updatePendingTicketsBadge = updatePendingTicketsBadge;
         InitializeComponent();
+        HighlightInspSubViewButton(0);
     }
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -44,6 +66,31 @@ public partial class FacultyWorkspaceView : UserControl
         }
 
         await LoadCoursesAsync();
+    }
+
+    public void NavigateToPage(int pageIndex)
+    {
+        _activePageIndex = Math.Clamp(pageIndex, 0, 3);
+
+        DedicatedInspectorGrid.Visibility = Visibility.Collapsed;
+        TopLevelPagesRoot.Visibility = Visibility.Visible;
+        _setSidebarCollapsed?.Invoke(false);
+
+        PageCoursesTasksGrid.Visibility = _activePageIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PageSubmissionsBorder.Visibility = _activePageIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        PageTicketsBorder.Visibility = _activePageIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        PageTrashBorder.Visibility = _activePageIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+
+        LblActivePageTitle.Text = _activePageIndex switch
+        {
+            0 => "1. Courses & Tasks",
+            1 => "2. Student Submissions",
+            2 => "3. Groupmate Tickets",
+            3 => "4. Repo Bin (Trash)",
+            _ => "1. Courses & Tasks",
+        };
+
+        _updateNavHighlight?.Invoke(_activePageIndex);
     }
 
     public async Task LoadCoursesAsync()
@@ -72,6 +119,12 @@ public partial class FacultyWorkspaceView : UserControl
             GridCourses.ItemsSource = null;
             GridCourses.ItemsSource = _courses;
 
+            CboActiveCourse.Items.Clear();
+            foreach (Course c in _courses)
+            {
+                CboActiveCourse.Items.Add($"{c.CourseCode} - {c.CourseTitle}");
+            }
+
             if (_courses.Count > 0)
             {
                 int idx = _courses.FindIndex(c => c.CourseId == prevCourseId);
@@ -81,6 +134,7 @@ public partial class FacultyWorkspaceView : UserControl
                 }
 
                 GridCourses.SelectedIndex = idx;
+                CboActiveCourse.SelectedIndex = idx;
                 _selectedCourse = _courses[idx];
             }
             else
@@ -97,6 +151,8 @@ public partial class FacultyWorkspaceView : UserControl
             _isLoading = false;
         }
 
+        await LoadTrashedReposAsync();
+
         if (_selectedCourse is not null)
         {
             await LoadSelectedCourseAsync(_selectedCourse);
@@ -105,6 +161,7 @@ public partial class FacultyWorkspaceView : UserControl
 
     public async Task RefreshDataAsync()
     {
+        await LoadTrashedReposAsync();
         if (_selectedCourse is not null)
         {
             await LoadSelectedCourseAsync(_selectedCourse);
@@ -112,6 +169,36 @@ public partial class FacultyWorkspaceView : UserControl
         else
         {
             await LoadCoursesAsync();
+        }
+    }
+
+    private async Task LoadTrashedReposAsync()
+    {
+        User? actor = _session.GetCurrentUserEntity();
+        if (actor is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var (ok, _, repos) = await _session.Repos.ListTrashedInRepoBinAsync(actor);
+            if (!ok)
+            {
+                return;
+            }
+
+            _trashed.Clear();
+            _trashed.AddRange(repos);
+            GridTrashedRepos.ItemsSource = null;
+            GridTrashedRepos.ItemsSource = _trashed;
+            if (_trashed.Count > 0 && GridTrashedRepos.SelectedIndex < 0)
+            {
+                GridTrashedRepos.SelectedIndex = 0;
+            }
+        }
+        catch
+        {
         }
     }
 
@@ -172,6 +259,16 @@ public partial class FacultyWorkspaceView : UserControl
             }
 
             GridSubmissions.ItemsSource = subRows;
+            if (_submissions.Count > 0)
+            {
+                int target = selectRepoIdx >= 0 ? selectRepoIdx : 0;
+                GridSubmissions.SelectedIndex = target;
+                _selectedRepo = _submissions[target];
+            }
+            else
+            {
+                _selectedRepo = null;
+            }
 
             _tasks.Clear();
             _tasks.AddRange(await _session.Courses.ListTasksByCourseAsync(course.CourseId));
@@ -194,28 +291,29 @@ public partial class FacultyWorkspaceView : UserControl
                 tk.AccessLevel.ToString(),
                 tk.ApprovalStatus.ToString())).ToList();
 
-            int pendingCount = _tickets.Count(tk => tk.ApprovalStatus == TicketApprovalStatus.Pending);
-            if (pendingCount > 0)
+            if (_tickets.Count > 0 && GridTickets.SelectedIndex < 0)
             {
-                LblPendingTicketsAlert.Text =
-                    $"{pendingCount} Pending Groupmate Collaboration Ticket(s) in {course.CourseCode} require faculty approval.";
-                PendingTicketsAlertBar.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                PendingTicketsAlertBar.Visibility = Visibility.Collapsed;
+                GridTickets.SelectedIndex = 0;
             }
 
-            if (_submissions.Count > 0)
+            UpdateTicketActionButtonsState();
+
+            int pendingCount = _tickets.Count(tk =>
+                tk.AccessLevel == AccessLevel.GroupCollaborator &&
+                tk.ApprovalStatus == TicketApprovalStatus.Pending);
+
+            _updatePendingTicketsBadge?.Invoke(pendingCount);
+            LblPendingTicketsAlert.Text = pendingCount > 0
+                ? $"{pendingCount} Pending GroupCollaborator ticket(s) in {course.CourseCode} require faculty approval."
+                : $"Groupmate ticket queue for {course.CourseCode} (0 pending).";
+
+            if (DedicatedInspectorGrid.Visibility == Visibility.Visible && prevRepoId > 0)
             {
-                int target = selectRepoIdx >= 0 ? selectRepoIdx : 0;
-                GridSubmissions.SelectedIndex = target;
-                _selectedRepo = _submissions[target];
-            }
-            else
-            {
-                _selectedRepo = null;
-                ClearInspector();
+                RepositoryRecord? fresh = await _session.Repos.GetByIdAsync(prevRepoId);
+                if (fresh is not null)
+                {
+                    await InspectSubmissionAsync(fresh);
+                }
             }
         }
         catch (Exception ex)
@@ -226,11 +324,16 @@ public partial class FacultyWorkspaceView : UserControl
         {
             _isLoading = false;
         }
+    }
 
-        if (_selectedRepo is not null)
-        {
-            await InspectSubmissionAsync(_selectedRepo);
-        }
+    private void UpdateTicketActionButtonsState()
+    {
+        bool isGroupTicket = GridTickets.SelectedIndex >= 0 &&
+                             GridTickets.SelectedIndex < _tickets.Count &&
+                             _tickets[GridTickets.SelectedIndex].AccessLevel == AccessLevel.GroupCollaborator;
+
+        BtnApproveTicket.IsEnabled = isGroupTicket;
+        BtnRejectTicket.IsEnabled = isGroupTicket;
     }
 
     private static string ComputeDeadlineStatus(RepositoryRecord r)
@@ -248,23 +351,54 @@ public partial class FacultyWorkspaceView : UserControl
         return DateTime.UtcNow > r.DeadlineUtc.Value ? "LATE" : "ON TIME";
     }
 
-    private void ClearInspector()
+    public async Task OpenInspectionViewAsync(RepositoryRecord repo)
     {
-        LblInspectorHeader.Text = "Read-Only Submission Inspector - No submission selected";
-        TvInspectorFiles.Items.Clear();
-        TxtInspectorCode.Text = string.Empty;
-        LblInspectorFilePath.Text = "No file selected";
-        LblInspectorFileSize.Text = string.Empty;
-        GridInspectorCommits.ItemsSource = null;
-        GridInspectorPushes.ItemsSource = null;
-        GridInspectorLanguages.ItemsSource = null;
-        GridInspectorDiscussions.ItemsSource = null;
+        TopLevelPagesRoot.Visibility = Visibility.Collapsed;
+        DedicatedInspectorGrid.Visibility = Visibility.Visible;
+        _setSidebarCollapsed?.Invoke(true);
+        SwitchInspSubView(0);
+        await InspectSubmissionAsync(repo);
+    }
+
+    private void SwitchInspSubView(int subViewIdx)
+    {
+        _activeInspSubViewIndex = Math.Clamp(subViewIdx, 0, 2);
+        InspSubCodeGrid.Visibility = _activeInspSubViewIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        InspSubCommitsGrid.Visibility = _activeInspSubViewIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        InspSubDiscussionsBorder.Visibility = _activeInspSubViewIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        HighlightInspSubViewButton(_activeInspSubViewIndex);
+    }
+
+    private void HighlightInspSubViewButton(int activeIdx)
+    {
+        Button[] buttons = [BtnInspSubCode, BtnInspSubCommits, BtnInspSubDiscussions];
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            bool isSelected = i == activeIdx;
+            buttons[i].BorderBrush = isSelected
+                ? (Brush)FindResource("AccentPrimaryBrush")
+                : (Brush)FindResource("BorderSubtleBrush");
+            buttons[i].FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
+        }
     }
 
     private async Task InspectSubmissionAsync(RepositoryRecord repo)
     {
         _selectedRepo = repo;
-        LblInspectorHeader.Text = $"Read-Only Submission Inspector - {repo.Title} ({repo.RepoSlug})";
+        string ownerText = repo.OwnerStudentId.HasValue && _userLookup.TryGetValue(repo.OwnerStudentId.Value, out string? name)
+            ? name
+            : "Student";
+
+        LblInspectorHeader.Text = $"Inspecting: {repo.RepoSlug} by {ownerText}";
+        LblInspLockBadge.Text = repo.IsLocked ? "LOCKED" : "OPEN";
+        InspLockBadgeBorder.BorderBrush = repo.IsLocked
+            ? (Brush)FindResource("AccentWarningBrush")
+            : (Brush)FindResource("AccentSuccessBrush");
+        BtnLockUnlockRepo.Content = repo.IsLocked ? "Unlock Repo" : "Lock Repo";
+
+        string ip = LanHelper.GetPreferredLanIpv4Address();
+        string cloneUrl = LanHelper.BuildCloneUrl(repo.RepoSlug, _session.ServerPort, ip);
+        TxtInspectorCloneUrl.Text = cloneUrl;
 
         LblInspFiles.Text = $"Total Files: {repo.TotalFiles}";
         LblInspSloc.Text = $"Source LOC: {repo.SourceLines:N0}";
@@ -291,7 +425,7 @@ public partial class FacultyWorkspaceView : UserControl
             var root = new TreeViewItem
             {
                 Header = repo.RepoSlug,
-                IsExpanded = true
+                IsExpanded = true,
             };
 
             TreeViewItem? firstLeaf = null;
@@ -312,7 +446,7 @@ public partial class FacultyWorkspaceView : UserControl
                         {
                             Header = segment,
                             Tag = isLeaf ? f : null,
-                            IsExpanded = true
+                            IsExpanded = true,
                         };
                         current.Items.Add(existing);
                         if (isLeaf && firstLeaf is null)
@@ -405,6 +539,51 @@ public partial class FacultyWorkspaceView : UserControl
             cm.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))).ToList();
     }
 
+    private void BtnToggleSidebar_Click(object sender, RoutedEventArgs e)
+    {
+        _toggleSidebar?.Invoke();
+    }
+
+    private async void BtnBackToSubmissions_Click(object sender, RoutedEventArgs e)
+    {
+        NavigateToPage(1);
+        await RefreshDataAsync();
+    }
+
+    private void BtnInspSubCode_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(0);
+
+    private void BtnInspSubCommits_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(1);
+
+    private void BtnInspSubDiscussions_Click(object sender, RoutedEventArgs e) => SwitchInspSubView(2);
+
+    private async void BtnInspectSubmissionRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: int repoId })
+        {
+            RepositoryRecord? target = _submissions.FirstOrDefault(r => r.RepoId == repoId);
+            if (target is not null)
+            {
+                await OpenInspectionViewAsync(target);
+            }
+        }
+    }
+
+    private async void BtnInspectSelectedSubmission_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridSubmissions.SelectedIndex >= 0 && GridSubmissions.SelectedIndex < _submissions.Count)
+        {
+            await OpenInspectionViewAsync(_submissions[GridSubmissions.SelectedIndex]);
+        }
+    }
+
+    private async void GridSubmissions_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (GridSubmissions.SelectedIndex >= 0 && GridSubmissions.SelectedIndex < _submissions.Count)
+        {
+            await OpenInspectionViewAsync(_submissions[GridSubmissions.SelectedIndex]);
+        }
+    }
+
     private async void GridCourses_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_isLoading || GridCourses.SelectedIndex < 0 || GridCourses.SelectedIndex >= _courses.Count)
@@ -412,17 +591,34 @@ public partial class FacultyWorkspaceView : UserControl
             return;
         }
 
-        await LoadSelectedCourseAsync(_courses[GridCourses.SelectedIndex]);
+        int idx = GridCourses.SelectedIndex;
+        if (CboActiveCourse.SelectedIndex != idx)
+        {
+            CboActiveCourse.SelectedIndex = idx;
+        }
+
+        await LoadSelectedCourseAsync(_courses[idx]);
     }
 
-    private async void GridSubmissions_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void CboActiveCourse_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_isLoading || GridSubmissions.SelectedIndex < 0 || GridSubmissions.SelectedIndex >= _submissions.Count)
+        if (_isLoading || CboActiveCourse.SelectedIndex < 0 || CboActiveCourse.SelectedIndex >= _courses.Count)
         {
             return;
         }
 
-        await InspectSubmissionAsync(_submissions[GridSubmissions.SelectedIndex]);
+        int idx = CboActiveCourse.SelectedIndex;
+        if (GridCourses.SelectedIndex != idx)
+        {
+            GridCourses.SelectedIndex = idx;
+        }
+
+        await LoadSelectedCourseAsync(_courses[idx]);
+    }
+
+    private void GridTickets_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateTicketActionButtonsState();
     }
 
     private async void BtnRefreshCourse_Click(object sender, RoutedEventArgs e)
@@ -431,16 +627,11 @@ public partial class FacultyWorkspaceView : UserControl
         ReportStatus("Faculty classroom view refreshed.");
     }
 
-    private void BtnViewApproveTickets_Click(object sender, RoutedEventArgs e)
-    {
-        TabCourseUpper.SelectedItem = TabGroupmateTickets;
-    }
-
     private async void BtnNewCourse_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new CourseEditorWindow(_session)
         {
-            Owner = Window.GetWindow(this)
+            Owner = Window.GetWindow(this),
         };
 
         if (dlg.ShowDialog() == true)
@@ -459,7 +650,7 @@ public partial class FacultyWorkspaceView : UserControl
 
         var dlg = new CourseEditorWindow(_session, _selectedCourse)
         {
-            Owner = Window.GetWindow(this)
+            Owner = Window.GetWindow(this),
         };
 
         if (dlg.ShowDialog() == true)
@@ -504,15 +695,65 @@ public partial class FacultyWorkspaceView : UserControl
         ReportStatus("Course deleted.");
     }
 
-    private async void BtnOpenRepoBin_Click(object sender, RoutedEventArgs e)
+    private async void BtnRestoreTrashed_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new RepoBinWindow(_session)
+        if (GridTrashedRepos.SelectedIndex < 0 || GridTrashedRepos.SelectedIndex >= _trashed.Count)
         {
-            Owner = Window.GetWindow(this)
-        };
+            return;
+        }
 
-        dlg.ShowDialog();
+        User? actor = _session.GetCurrentUserEntity();
+        if (actor is null)
+        {
+            return;
+        }
+
+        RepositoryRecord target = _trashed[GridTrashedRepos.SelectedIndex];
+        var (ok, message) = await _session.Repos.RestoreFromRepoBinAsync(actor, target.RepoId);
+        if (!ok)
+        {
+            MessageBox.Show(message, "Restore Repository", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         await RefreshDataAsync();
+        ReportStatus($"Restored '{target.RepoSlug}' from Repo Bin.");
+    }
+
+    private async void BtnPurgeTrashed_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridTrashedRepos.SelectedIndex < 0 || GridTrashedRepos.SelectedIndex >= _trashed.Count)
+        {
+            return;
+        }
+
+        User? actor = _session.GetCurrentUserEntity();
+        if (actor is null)
+        {
+            return;
+        }
+
+        RepositoryRecord target = _trashed[GridTrashedRepos.SelectedIndex];
+        MessageBoxResult confirm = MessageBox.Show(
+            $"Permanently purge '{target.Title}' ({target.RepoSlug})?\n\nThis deletes the bare repository from disk and cannot be undone.",
+            "Confirm Permanent Purge",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var (ok, message) = await _session.Repos.PurgeFromRepoBinAsync(actor, target.RepoId);
+        if (!ok)
+        {
+            MessageBox.Show(message, "Purge Repository", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        await RefreshDataAsync();
+        ReportStatus($"Purged '{target.RepoSlug}' permanently.");
     }
 
     private async void BtnGradeRubric_Click(object sender, RoutedEventArgs e)
@@ -532,7 +773,7 @@ public partial class FacultyWorkspaceView : UserControl
         var dlg = new GradeRubricWindow(
             _session, _selectedRepo, _selectedCourse?.CourseCode ?? "", ownerText)
         {
-            Owner = Window.GetWindow(this)
+            Owner = Window.GetWindow(this),
         };
 
         if (dlg.ShowDialog() == true)
@@ -563,10 +804,15 @@ public partial class FacultyWorkspaceView : UserControl
             return;
         }
 
+        RepositoryRecord? fresh = await _session.Repos.GetByIdAsync(_selectedRepo.RepoId);
+        if (fresh is not null)
+        {
+            await InspectSubmissionAsync(fresh);
+        }
+
         ReportStatus(nextLock
             ? $"Locked repository '{_selectedRepo.RepoSlug}'."
             : $"Unlocked repository '{_selectedRepo.RepoSlug}'.");
-        await RefreshDataAsync();
     }
 
     private async void BtnEditRepo_Click(object sender, RoutedEventArgs e)
@@ -578,23 +824,22 @@ public partial class FacultyWorkspaceView : UserControl
 
         var dlg = new RepositoryEditorWindow(_session, _selectedRepo)
         {
-            Owner = Window.GetWindow(this)
+            Owner = Window.GetWindow(this),
         };
 
-        if (dlg.ShowDialog() == true)
-        {
-            await RefreshDataAsync();
-            ReportStatus($"Updated repository settings for '{_selectedRepo.RepoSlug}'.");
-        }
+        dlg.ShowDialog();
+        await RefreshDataAsync();
+        ReportStatus($"Refreshed repository settings for '{_selectedRepo.RepoSlug}'.");
     }
 
     private async void BtnMoveToRepoBin_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedRepo is null)
+        if (GridSubmissions.SelectedIndex < 0 || GridSubmissions.SelectedIndex >= _submissions.Count)
         {
             return;
         }
 
+        RepositoryRecord target = _submissions[GridSubmissions.SelectedIndex];
         User? actor = _session.GetCurrentUserEntity();
         if (actor is null)
         {
@@ -602,7 +847,7 @@ public partial class FacultyWorkspaceView : UserControl
         }
 
         MessageBoxResult confirm = MessageBox.Show(
-            $"Move '{_selectedRepo.Title}' ({_selectedRepo.RepoSlug}) to the Repo Bin?",
+            $"Move '{target.Title}' ({target.RepoSlug}) to the Repo Bin?",
             "Move to Repo Bin",
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
@@ -612,14 +857,14 @@ public partial class FacultyWorkspaceView : UserControl
             return;
         }
 
-        var (ok, message) = await _session.Repos.MoveToRepoBinAsync(actor, _selectedRepo.RepoId);
+        var (ok, message) = await _session.Repos.MoveToRepoBinAsync(actor, target.RepoId);
         if (!ok)
         {
             MessageBox.Show(message, "Move to Repo Bin", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        ReportStatus($"Moved '{_selectedRepo.RepoSlug}' to Repo Bin.");
+        ReportStatus($"Moved '{target.RepoSlug}' to Repo Bin.");
         await RefreshDataAsync();
     }
 
@@ -652,7 +897,7 @@ public partial class FacultyWorkspaceView : UserControl
 
         var dlg = new CodingTaskWindow(_session, _selectedCourse.CourseId, _selectedCourse.CourseCode)
         {
-            Owner = Window.GetWindow(this)
+            Owner = Window.GetWindow(this),
         };
 
         if (dlg.ShowDialog() == true)
