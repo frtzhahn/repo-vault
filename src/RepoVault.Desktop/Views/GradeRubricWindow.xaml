@@ -15,7 +15,7 @@
         <Border Background="{DynamicResource BgSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
-                CornerRadius="8"
+                CornerRadius="6"
                 Padding="22,18">
             <Grid>
                 <Grid.RowDefinitions>
@@ -42,8 +42,10 @@
                                    Margin="0,2,0,0" />
                     </StackPanel>
 
-                    <Border Background="{DynamicResource AccentPrimaryBrush}"
-                            CornerRadius="6"
+                    <Border Background="{DynamicResource BgElevatedBrush}"
+                            BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
                             Padding="14,6"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center">
@@ -51,7 +53,7 @@
                                    Text="Total: 80 / 100"
                                    FontSize="15"
                                    FontWeight="Bold"
-                                   Foreground="{DynamicResource TextOnAccentBrush}" />
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
                     </Border>
                 </Grid>
 
@@ -74,7 +76,7 @@
                         Background="{DynamicResource BgCanvasBrush}"
                         BorderBrush="{DynamicResource BorderSubtleBrush}"
                         BorderThickness="1"
-                        CornerRadius="6"
+                        CornerRadius="4"
                         Padding="14,12"
                         Margin="0,0,0,12">
                     <StackPanel>
