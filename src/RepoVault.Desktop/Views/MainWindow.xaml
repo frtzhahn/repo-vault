@@ -42,7 +42,6 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Button x:Name="BtnSidebarHamburger"
                                 Grid.Column="0"
@@ -59,12 +58,6 @@
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBlock Grid.Column="2"
-                                   Text="Ctrl+B"
-                                   FontSize="10"
-                                   FontFamily="Consolas"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}" />
                     </Grid>
                 </Border>
 
@@ -79,44 +72,88 @@
                     <!-- student pages -->
                     <StackPanel x:Name="StudentNavPanel" Visibility="Collapsed">
                         <Button x:Name="BtnStudentNavWorkspaces"
-                                Content="1. My Workspaces"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnStudentNavWorkspaces_Click" />
+                                Click="BtnStudentNavWorkspaces_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconExplorerToggle}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="My Workspaces" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="BtnStudentNavTasks"
-                                Content="2. Assigned Tasks"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnStudentNavTasks_Click" />
+                                Click="BtnStudentNavTasks_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconFile}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Assigned Tasks" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="BtnStudentNavTickets"
-                                Content="3. Team &amp; Tickets"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnStudentNavTickets_Click" />
+                                Click="BtnStudentNavTickets_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconGitBranch}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Team &amp; Tickets" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <!-- faculty pages -->
                     <StackPanel x:Name="FacultyNavPanel" Visibility="Collapsed">
                         <Button x:Name="BtnFacultyNavCourses"
-                                Content="1. Courses &amp; Tasks"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnFacultyNavCourses_Click" />
+                                Click="BtnFacultyNavCourses_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconExplorerToggle}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Courses &amp; Tasks" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="BtnFacultyNavSubmissions"
-                                Content="2. Student Submissions"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnFacultyNavSubmissions_Click" />
+                                Click="BtnFacultyNavSubmissions_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconFile}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Student Submissions" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="BtnFacultyNavTickets"
-                                Content="3. Groupmate Tickets"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnFacultyNavTickets_Click" />
+                                Click="BtnFacultyNavTickets_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconGitBranch}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock x:Name="LblFacultyNavTicketsText"
+                                           Text="Groupmate Tickets"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="BtnFacultyNavTrash"
-                                Content="4. Repo Bin (Trash)"
                                 Style="{StaticResource SidebarNavButtonStyle}"
                                 Margin="0,0,0,4"
-                                Click="BtnFacultyNavTrash_Click" />
+                                Click="BtnFacultyNavTrash_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource VectorIconPathStyle}"
+                                      Data="{StaticResource IconTrash}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Repo Bin" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
 
@@ -164,7 +201,7 @@
                                     </StackPanel>
                                 </Button>
 
-                                <!-- lan ip + push counter -->
+                                <!-- bound host + push counter -->
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
