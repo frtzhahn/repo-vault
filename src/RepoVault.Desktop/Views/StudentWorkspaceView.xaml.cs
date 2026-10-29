@@ -25,6 +25,9 @@ public partial class StudentWorkspaceView : UserControl
     private readonly List<RepositoryRecord> _repos = new();
     private readonly List<RepositoryRecord> _ownedRepos = new();
     private readonly List<CodingTask> _tasks = new();
+    private readonly List<TicketTableRow> _ticketRows = new();
+    private readonly List<DiscussionCommentViewDto> _comments = new();
+    private readonly Dictionary<int, string> _userLookup = new();
 
     private RepositoryRecord? _selectedRepo;
     private string? _currentEditingFilePath;
@@ -65,6 +68,13 @@ public partial class StudentWorkspaceView : UserControl
         await LoadCoursesAndDataAsync();
     }
 
+    public void SetSidebarOpenState(bool isSidebarOpen)
+    {
+        Visibility toggleVis = isSidebarOpen ? Visibility.Collapsed : Visibility.Visible;
+        BtnPageSidebarToggle.Visibility = toggleVis;
+        BtnWorkspaceSidebarToggle.Visibility = toggleVis;
+    }
+
     public void NavigateToPage(int pageIndex)
     {
         _activePageIndex = Math.Clamp(pageIndex, 0, 2);
@@ -79,10 +89,10 @@ public partial class StudentWorkspaceView : UserControl
 
         LblActivePageTitle.Text = _activePageIndex switch
         {
-            0 => "1. My Workspaces",
-            1 => "2. Assigned Tasks",
-            2 => "3. Team & Tickets",
-            _ => "1. My Workspaces",
+            0 => "My Workspaces",
+            1 => "Assigned Tasks",
+            2 => "Team & Tickets",
+            _ => "My Workspaces",
         };
 
         _updateNavHighlight?.Invoke(_activePageIndex);
@@ -151,6 +161,13 @@ public partial class StudentWorkspaceView : UserControl
         _isLoading = true;
         try
         {
+            List<UserSummaryDto> users = await _session.Users.ListUserSummariesAsync();
+            _userLookup.Clear();
+            foreach (UserSummaryDto u in users)
+            {
+                _userLookup[u.UserId] = $"{u.FullName} ({u.Username})";
+            }
+
             int? courseFilter = null;
             if (CboCourseFilter.SelectedIndex > 0 && CboCourseFilter.SelectedIndex - 1 < _courses.Count)
             {
@@ -210,7 +227,7 @@ public partial class StudentWorkspaceView : UserControl
             foreach (CodingTask t in _tasks)
             {
                 string cCode = courseLookup.TryGetValue(t.CourseId, out string? tc) ? tc : "#" + t.CourseId;
-                string typeBadge = t.AllowGroupWork ? $"GROUP (max {t.MaxGroupSize})" : "SOLO";
+                string typeBadge = t.AllowGroupWork ? $"Group (Max {t.MaxGroupSize})" : "Solo Task";
                 string dl = t.DeadlineUtc.HasValue
                     ? t.DeadlineUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
                     : "Open";
@@ -245,7 +262,7 @@ public partial class StudentWorkspaceView : UserControl
             BtnRequestGroupmateTicket.IsEnabled = hasTargetOwnedRepo;
             BtnGrantPeerAccess.IsEnabled = hasTargetOwnedRepo;
 
-            await RefreshAllTicketsTableAsync();
+            await RefreshAllTicketsTableAsync(courseLookup);
 
             if (DedicatedRepoWorkspaceGrid.Visibility == Visibility.Visible && prevRepoId > 0)
             {
@@ -266,16 +283,27 @@ public partial class StudentWorkspaceView : UserControl
         }
     }
 
-    private async Task RefreshAllTicketsTableAsync()
+    private async Task RefreshAllTicketsTableAsync(Dictionary<int, string>? courseLookup = null)
     {
-        var allContributorRows = new List<TicketTableRow>();
+        courseLookup ??= _courses.ToDictionary(c => c.CourseId, c => c.CourseCode);
+        _ticketRows.Clear();
+
         foreach (RepositoryRecord r in _repos)
         {
+            string courseCode = courseLookup.TryGetValue(r.CourseId, out string? cc) ? cc : "#" + r.CourseId;
+            string ownerDisplay = r.OwnerStudentId.HasValue && _userLookup.TryGetValue(r.OwnerStudentId.Value, out string? ow)
+                ? ow
+                : (r.OwnerStudentId.HasValue ? "Student #" + r.OwnerStudentId.Value : "Course Faculty");
+
             List<ContributorViewDto> list = await _session.Contributors.ListContributorViewsByRepoAsync(r.RepoId);
             foreach (ContributorViewDto item in list)
             {
-                allContributorRows.Add(new TicketTableRow(
+                _ticketRows.Add(new TicketTableRow(
                     r.RepoSlug,
+                    r.Title,
+                    courseCode,
+                    ownerDisplay,
+                    $"{item.FullName} ({item.Username})",
                     item.FullName,
                     item.Username,
                     item.TeamRole,
@@ -285,8 +313,55 @@ public partial class StudentWorkspaceView : UserControl
             }
         }
 
-        GridContributors.ItemsSource = allContributorRows;
+        GridContributors.ItemsSource = null;
+        GridContributors.ItemsSource = _ticketRows;
+        if (_ticketRows.Count > 0 && GridContributors.SelectedIndex < 0)
+        {
+            GridContributors.SelectedIndex = 0;
+        }
+
+        UpdateSelectedTicketPreview();
     }
+
+    private void GridContributors_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateSelectedTicketPreview();
+    }
+
+    private void UpdateSelectedTicketPreview()
+    {
+        if (GridContributors.SelectedIndex < 0 || GridContributors.SelectedIndex >= _ticketRows.Count)
+        {
+            LblTicketDetailHeader.Text = "Select a row above to inspect ticket ownership, target student, and access permissions.";
+            LblTicketDetailParties.Text = string.Empty;
+            LblTicketDetailAccess.Text = string.Empty;
+            return;
+        }
+
+        TicketTableRow row = _ticketRows[GridContributors.SelectedIndex];
+        LblTicketDetailHeader.Text = $"Repository: {row.RepoTitle} ({row.RepoSlug})  |  Course: {row.CourseCode}";
+        LblTicketDetailParties.Text =
+            $"Repository Owner (Requested / Granted By): {row.OwnerDisplay}  |  Invited User: {row.TargetDisplay}  |  Team Role: {row.TeamRole}";
+        LblTicketDetailAccess.Text =
+            $"Role & Access Type: {DescribeAccessLevel(row.AccessLevel)}  |  Approval Status: {DescribeApprovalStatus(row.ApprovalStatus)}";
+    }
+
+    private static string DescribeAccessLevel(string accessLevel) => accessLevel switch
+    {
+        "GroupCollaborator" => "GroupCollaborator - Full Code & Push Access upon Approval",
+        "PeerViewer" => "PeerViewer - Metadata & README Only",
+        "Owner" => "Owner - Repository Creator (Full Code & Push Access)",
+        "FacultyReviewer" => "FacultyReviewer - Course Instructor Read & Grading Access",
+        _ => accessLevel,
+    };
+
+    private static string DescribeApprovalStatus(string status) => status switch
+    {
+        "Pending" => "Pending Faculty Review",
+        "Approved" => "Approved",
+        "Rejected" => "Rejected",
+        _ => status,
+    };
 
     private static string ComputeDeadlineBadge(RepositoryRecord r)
     {
@@ -295,12 +370,13 @@ public partial class StudentWorkspaceView : UserControl
             return "OPEN";
         }
 
+        string datePart = r.DeadlineUtc.Value.ToLocalTime().ToString("MM-dd HH:mm");
         if (r.IsSubmitted && r.SubmittedAt.HasValue)
         {
-            return r.SubmittedAt.Value <= r.DeadlineUtc.Value ? "ON TIME" : "LATE";
+            return r.SubmittedAt.Value <= r.DeadlineUtc.Value ? $"{datePart} (OK)" : $"{datePart} (LATE)";
         }
 
-        return DateTime.UtcNow > r.DeadlineUtc.Value ? "LATE" : "ON TIME";
+        return DateTime.UtcNow > r.DeadlineUtc.Value ? $"{datePart} (LATE)" : $"{datePart} (DUE)";
     }
 
     public async Task OpenRepoWorkspaceAsync(RepositoryRecord repo)
@@ -309,18 +385,21 @@ public partial class StudentWorkspaceView : UserControl
         DedicatedRepoWorkspaceGrid.Visibility = Visibility.Visible;
         _setSidebarCollapsed?.Invoke(true);
         NewFileBoxBorder.Visibility = Visibility.Collapsed;
+        BottomPanelBorder.Visibility = Visibility.Visible;
+        SwitchBottomPanelTab(0);
         await LoadSelectedRepoAsync(repo, null);
     }
 
     private void SwitchBottomPanelTab(int tabIdx)
     {
-        _activePanelTabIndex = Math.Clamp(tabIdx, 0, 3);
-        GridUnifiedCommits.Visibility = _activePanelTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
-        PanelViewDiscussionsGrid.Visibility = _activePanelTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
-        PanelViewTeamGrid.Visibility = _activePanelTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
-        PanelViewRubricGrid.Visibility = _activePanelTabIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        _activePanelTabIndex = Math.Clamp(tabIdx, 0, 4);
+        PanelViewTaskSpecGrid.Visibility = _activePanelTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        GridUnifiedCommits.Visibility = _activePanelTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        PanelViewDiscussionsGrid.Visibility = _activePanelTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        PanelViewTeamGrid.Visibility = _activePanelTabIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        PanelViewRubricGrid.Visibility = _activePanelTabIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
 
-        Button[] tabs = [BtnPanelTabCommits, BtnPanelTabDiscussions, BtnPanelTabTeam, BtnPanelTabRubric];
+        Button[] tabs = [BtnPanelTabSpec, BtnPanelTabCommits, BtnPanelTabDiscussions, BtnPanelTabTeam, BtnPanelTabRubric];
         for (int i = 0; i < tabs.Length; i++)
         {
             bool active = i == _activePanelTabIndex;
@@ -370,10 +449,51 @@ public partial class StudentWorkspaceView : UserControl
         LblMetricSummaryLine.Text =
             $"{repo.TotalFiles} Files  |  {repo.SourceLines:N0} Source LOC  |  {repo.CommentLines:N0} Comments ({ratio:F1}%)  |  {repo.BlankLines:N0} Blanks";
 
+        await LoadTaskSpecAsync(repo);
         await LoadFileTreeAsync(repo, preferredFilePath);
         await LoadUnifiedCommitsAndPushesAsync(repo);
         await LoadTeamAndCommentsAsync(repo);
         await LoadEvaluationAndLanguagesAsync(repo);
+    }
+
+    private async Task LoadTaskSpecAsync(RepositoryRecord repo)
+    {
+        string courseCode = _courses.FirstOrDefault(c => c.CourseId == repo.CourseId)?.CourseCode ?? ("#" + repo.CourseId);
+        CodingTask? task = null;
+        if (repo.TaskId.HasValue)
+        {
+            task = _tasks.FirstOrDefault(t => t.TaskId == repo.TaskId.Value)
+                   ?? await _session.Courses.GetTaskByIdAsync(repo.TaskId.Value);
+        }
+
+        if (task is not null)
+        {
+            LblSpecTitle.Text = task.Title;
+            LblSpecCourse.Text = $"Course: {courseCode}";
+            LblSpecTemplate.Text = $"Template: {task.StarterTemplate}";
+            LblSpecMode.Text = task.AllowGroupWork
+                ? $"Mode: Group Task - Max {task.MaxGroupSize}"
+                : "Mode: Solo Task";
+            LblSpecDeadline.Text = task.DeadlineUtc.HasValue
+                ? $"Deadline: {task.DeadlineUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm}"
+                : "Deadline: Open";
+            TxtSpecInstructions.Text = string.IsNullOrWhiteSpace(task.Instructions)
+                ? "No detailed problem instructions provided for this task."
+                : task.Instructions;
+        }
+        else
+        {
+            LblSpecTitle.Text = repo.Title;
+            LblSpecCourse.Text = $"Course: {courseCode}";
+            LblSpecTemplate.Text = $"Language: {repo.PrimaryLanguage ?? "Git"}";
+            LblSpecMode.Text = "Mode: Classroom Repository";
+            LblSpecDeadline.Text = repo.DeadlineUtc.HasValue
+                ? $"Deadline: {repo.DeadlineUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm}"
+                : "Deadline: Open";
+            TxtSpecInstructions.Text = string.IsNullOrWhiteSpace(repo.Description)
+                ? "Classroom project repository. Select any source file in the Explorer to inspect or edit code."
+                : repo.Description;
+        }
     }
 
     private async Task LoadFileTreeAsync(RepositoryRecord repo, string? preferredFilePath)
@@ -666,12 +786,19 @@ public partial class StudentWorkspaceView : UserControl
         List<ContributorViewDto> contributors = await _session.Contributors.ListContributorViewsByRepoAsync(repo.RepoId);
         GridRepoTeam.ItemsSource = contributors;
 
-        List<DiscussionCommentViewDto> comments = await _session.Discussions.ListCommentViewsByRepoAsync(repo.RepoId, false);
-        GridComments.ItemsSource = comments.Select(cm => new CommentGridRow(
+        _comments.Clear();
+        _comments.AddRange(await _session.Discussions.ListCommentViewsByRepoAsync(repo.RepoId, false));
+        GridComments.ItemsSource = _comments.Select(cm => new CommentGridRow(
             cm.CommentId,
+            cm.AuthorUsername,
             $"{cm.AuthorFullName} ({cm.AuthorRole})",
             cm.IsModeratedHidden ? "[moderated by faculty]" : cm.CommentBody,
             cm.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))).ToList();
+
+        if (_comments.Count > 0 && GridComments.SelectedIndex < 0)
+        {
+            GridComments.SelectedIndex = 0;
+        }
     }
 
     private async Task LoadEvaluationAndLanguagesAsync(RepositoryRecord repo)
@@ -724,30 +851,20 @@ public partial class StudentWorkspaceView : UserControl
         ToggleBottomPanel();
     }
 
-    private void BtnPanelTabCommits_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(0);
+    private void BtnPanelTabSpec_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(0);
 
-    private void BtnPanelTabDiscussions_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(1);
+    private void BtnPanelTabCommits_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(1);
 
-    private void BtnPanelTabTeam_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(2);
+    private void BtnPanelTabDiscussions_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(2);
 
-    private void BtnPanelTabRubric_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(3);
+    private void BtnPanelTabTeam_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(3);
+
+    private void BtnPanelTabRubric_Click(object sender, RoutedEventArgs e) => SwitchBottomPanelTab(4);
 
     private async void BtnBackToWorkspaces_Click(object sender, RoutedEventArgs e)
     {
         NavigateToPage(0);
         await RefreshDataAsync();
-    }
-
-    private async void BtnOpenWorkspaceRow_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: int repoId })
-        {
-            RepositoryRecord? target = _repos.FirstOrDefault(r => r.RepoId == repoId);
-            if (target is not null)
-            {
-                await OpenRepoWorkspaceAsync(target);
-            }
-        }
     }
 
     private async void BtnOpenSelectedWorkspace_Click(object sender, RoutedEventArgs e)
@@ -764,6 +881,53 @@ public partial class StudentWorkspaceView : UserControl
         {
             await OpenRepoWorkspaceAsync(_repos[GridMyRepos.SelectedIndex]);
         }
+    }
+
+    private async void MenuOpenWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridMyRepos.SelectedIndex >= 0 && GridMyRepos.SelectedIndex < _repos.Count)
+        {
+            await OpenRepoWorkspaceAsync(_repos[GridMyRepos.SelectedIndex]);
+        }
+    }
+
+    private async void MenuCopyClone_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridMyRepos.SelectedIndex < 0 || GridMyRepos.SelectedIndex >= _repos.Count)
+        {
+            return;
+        }
+
+        RepositoryRecord target = _repos[GridMyRepos.SelectedIndex];
+        await CopyCloneCommandForRepoAsync(target.RepoSlug, false);
+    }
+
+    private async void MenuTurnInToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridMyRepos.SelectedIndex < 0 || GridMyRepos.SelectedIndex >= _repos.Count)
+        {
+            return;
+        }
+
+        RepositoryRecord target = _repos[GridMyRepos.SelectedIndex];
+        User? actor = _session.GetCurrentUserEntity();
+        if (actor is null)
+        {
+            return;
+        }
+
+        bool nextState = !target.IsSubmitted;
+        var (ok, message) = await _session.Repos.SetSubmissionStateAsync(actor, target.RepoId, nextState);
+        if (!ok)
+        {
+            MessageBox.Show(message, "Turn In / Unsubmit Task", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        await RefreshDataAsync();
+        ReportStatus(nextState
+            ? $"Turned in '{target.RepoSlug}'."
+            : $"Reverted '{target.RepoSlug}' to draft.");
     }
 
     private async void CboCourseFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -885,8 +1049,17 @@ public partial class StudentWorkspaceView : UserControl
             return;
         }
 
-        string ip = LanHelper.GetPreferredLanIpv4Address();
-        string cloneUrl = LanHelper.BuildCloneUrl(_selectedRepo.RepoSlug, _session.ServerPort, ip);
+        await CopyCloneCommandForRepoAsync(_selectedRepo.RepoSlug, true);
+    }
+
+    private async Task CopyCloneCommandForRepoAsync(string repoSlug, bool animateHeaderButton)
+    {
+        if (_session.Server is not { IsRunning: true })
+        {
+            await _session.EnsureServerRunningAsync();
+        }
+
+        string cloneUrl = _session.BuildCloneUrl(repoSlug);
         string cmd = $"git clone {cloneUrl}";
 
         try
@@ -894,20 +1067,23 @@ public partial class StudentWorkspaceView : UserControl
             Clipboard.SetText(cmd);
             ReportStatus("Copied: " + cmd);
 
-            if (TryFindResource("IconCheck") is Geometry checkGeo)
+            if (animateHeaderButton)
             {
-                CloneBtnIconPath.Data = checkGeo;
+                if (TryFindResource("IconCheck") is Geometry checkGeo)
+                {
+                    CloneBtnIconPath.Data = checkGeo;
+                }
+
+                LblCloneBtnText.Text = "Copied";
+                await Task.Delay(1500);
+
+                if (TryFindResource("IconCopy") is Geometry copyGeo)
+                {
+                    CloneBtnIconPath.Data = copyGeo;
+                }
+
+                LblCloneBtnText.Text = "Clone";
             }
-
-            LblCloneBtnText.Text = "Copied";
-            await Task.Delay(1500);
-
-            if (TryFindResource("IconCopy") is Geometry copyGeo)
-            {
-                CloneBtnIconPath.Data = copyGeo;
-            }
-
-            LblCloneBtnText.Text = "Clone";
         }
         catch (Exception ex)
         {
@@ -1002,6 +1178,26 @@ public partial class StudentWorkspaceView : UserControl
         }
     }
 
+    private void BtnReplyComment_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridComments.SelectedIndex >= 0 && GridComments.SelectedIndex < _comments.Count)
+        {
+            DiscussionCommentViewDto target = _comments[GridComments.SelectedIndex];
+            string prefix = $"@{target.AuthorUsername}: ";
+            if (!TxtNewComment.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                TxtNewComment.Text = prefix + TxtNewComment.Text;
+            }
+        }
+        else if (!TxtNewComment.Text.StartsWith("@", StringComparison.Ordinal))
+        {
+            TxtNewComment.Text = "@user: " + TxtNewComment.Text;
+        }
+
+        TxtNewComment.Focus();
+        TxtNewComment.CaretIndex = TxtNewComment.Text.Length;
+    }
+
     private async void BtnPostComment_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedRepo is null)
@@ -1055,14 +1251,15 @@ public partial class StudentWorkspaceView : UserControl
         string TypeBadge, string DeadlineText);
 
     private sealed record TicketTableRow(
-        string RepoSlug, string FullName, string Username, string TeamRole,
+        string RepoSlug, string RepoTitle, string CourseCode, string OwnerDisplay,
+        string TargetDisplay, string FullName, string Username, string TeamRole,
         string AccessLevel, string ApprovalStatus, string AssignedAtText);
 
     private sealed record UnifiedCommitRow(
         string ShortSha, string CommitMessage, string AuthorName, string TimestampText, string TimelinessText);
 
     private sealed record CommentGridRow(
-        int CommentId, string AuthorDisplay, string CommentBody, string CreatedAtText);
+        int CommentId, string AuthorUsername, string AuthorDisplay, string CommentBody, string CreatedAtText);
 
     private sealed record LangGridRow(
         string LanguageName, int FileCount, int SourceLines, int CommentLines, string ShareText);

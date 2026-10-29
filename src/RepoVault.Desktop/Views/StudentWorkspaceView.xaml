@@ -7,7 +7,7 @@
              Loaded="UserControl_Loaded">
     <Grid>
         <!-- ======================================================================= -->
-        <!-- TOP-LEVEL PAGES CONTAINER (Pages 1, 2, 3 controlled by Left Sidebar)    -->
+        <!-- TOP-LEVEL PAGES CONTAINER (Controlled by Left Sidebar)                  -->
         <!-- ======================================================================= -->
         <Grid x:Name="TopLevelPagesRoot" Margin="12" Visibility="Visible">
             <Grid.RowDefinitions>
@@ -15,7 +15,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- shared top page header with IconSidebarToggle and course filter -->
+            <!-- shared top page header with single sidebar toggle (hidden when sidebar is open) and course filter -->
             <Border Grid.Row="0"
                     Background="{DynamicResource BgSurfaceBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
@@ -31,15 +31,17 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Style="{StaticResource IconButtonStyle}"
+                        <Button x:Name="BtnPageSidebarToggle"
+                                Style="{StaticResource IconButtonStyle}"
                                 Margin="0,0,8,0"
+                                Visibility="Collapsed"
                                 ToolTip="Toggle Navigation Sidebar (Ctrl+B)"
                                 Click="BtnToggleSidebar_Click">
                             <Path Style="{StaticResource VectorIconPathStyle}"
                                   Data="{StaticResource IconSidebarToggle}" />
                         </Button>
                         <TextBlock x:Name="LblActivePageTitle"
-                                   Text="1. My Workspaces"
+                                   Text="My Workspaces"
                                    FontSize="14"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
@@ -88,7 +90,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0"
-                                   Text="Select a repository to open the code editor, commit changes, or turn in your task."
+                                   Text="Double-click any repository (or right-click for actions) to open the code editor, commit changes, or turn in your task."
                                    FontSize="12"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMutedBrush}" />
@@ -108,31 +110,21 @@
                     <DataGrid x:Name="GridMyRepos"
                               Grid.Row="1"
                               MouseDoubleClick="GridMyRepos_MouseDoubleClick">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open Workspace" Click="MenuOpenWorkspace_Click" />
+                                <MenuItem Header="Copy Clone Command" Click="MenuCopyClone_Click" />
+                                <MenuItem Header="Turn In / Unsubmit Task" Click="MenuTurnInToggle_Click" />
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Slug" Binding="{Binding RepoSlug}" Width="140" FontFamily="Consolas" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="Repository Title" Binding="{Binding Title}" Width="*" />
-                            <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="90" />
+                            <DataGridTextColumn Header="Slug" Binding="{Binding RepoSlug}" Width="145" FontFamily="Consolas" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Repository Title" Binding="{Binding Title}" Width="1.4*" />
+                            <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="95" />
                             <DataGridTextColumn Header="Role" Binding="{Binding AccessRole}" Width="115" FontFamily="Consolas" />
-                            <DataGridTextColumn Header="Status" Binding="{Binding StatusBadge}" Width="95" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineBadge}" Width="95" />
-                            <DataGridTextColumn Header="Source LOC" Binding="{Binding SourceLocText}" Width="90" FontFamily="Consolas" />
-                            <DataGridTemplateColumn Header="Action" Width="135">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Button Style="{StaticResource PrimaryButtonStyle}"
-                                                Padding="8,2"
-                                                Tag="{Binding RepoId}"
-                                                Click="BtnOpenWorkspaceRow_Click">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Open" Margin="0,0,5,0" VerticalAlignment="Center" />
-                                                <Path Style="{StaticResource VectorIconPathStyle}"
-                                                      Data="{StaticResource IconArrowRight}"
-                                                      Width="11" Height="11" />
-                                            </StackPanel>
-                                        </Button>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Status" Binding="{Binding StatusBadge}" Width="105" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineBadge}" Width="145" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Source LOC" Binding="{Binding SourceLocText}" Width="105" FontFamily="Consolas" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
@@ -182,11 +174,11 @@
                               Margin="0,0,0,10"
                               SelectionChanged="GridAssignedTasks_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="1.4*" FontWeight="SemiBold" />
                             <DataGridTextColumn Header="Course" Binding="{Binding CourseCode}" Width="100" />
-                            <DataGridTextColumn Header="Starter Template" Binding="{Binding StarterTemplate}" Width="130" FontFamily="Consolas" />
-                            <DataGridTextColumn Header="Collaboration Mode" Binding="{Binding TypeBadge}" Width="130" />
-                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineText}" Width="140" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Starter Template" Binding="{Binding StarterTemplate}" Width="135" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Mode" Binding="{Binding TypeBadge}" Width="135" />
+                            <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineText}" Width="145" FontFamily="Consolas" />
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -216,6 +208,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="0,0,0,10">
@@ -262,17 +255,44 @@
                     </Grid>
 
                     <DataGrid x:Name="GridContributors"
-                              Grid.Row="1">
+                              Grid.Row="1"
+                              Margin="0,0,0,10"
+                              SelectionChanged="GridContributors_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Repository" Binding="{Binding RepoSlug}" Width="140" FontFamily="Consolas" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="Student Name" Binding="{Binding FullName}" Width="180" />
-                            <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="120" FontFamily="Consolas" />
-                            <DataGridTextColumn Header="Team Role" Binding="{Binding TeamRole}" Width="130" />
+                            <DataGridTextColumn Header="Repository" Binding="{Binding RepoSlug}" Width="135" FontFamily="Consolas" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Owner (Requested By)" Binding="{Binding OwnerDisplay}" Width="*" />
+                            <DataGridTextColumn Header="Invited User" Binding="{Binding TargetDisplay}" Width="1.2*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Team Role" Binding="{Binding TeamRole}" Width="120" />
                             <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="140" FontFamily="Consolas" />
-                            <DataGridTextColumn Header="Ticket Status" Binding="{Binding ApprovalStatus}" Width="115" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="Assigned At" Binding="{Binding AssignedAtText}" Width="*" FontFamily="Consolas" />
+                            <DataGridTextColumn Header="Ticket Status" Binding="{Binding ApprovalStatus}" Width="110" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Assigned At" Binding="{Binding AssignedAtText}" Width="145" FontFamily="Consolas" />
                         </DataGrid.Columns>
                     </DataGrid>
+
+                    <Expander Grid.Row="2"
+                              Header="Selected Ticket Details"
+                              IsExpanded="True">
+                        <StackPanel Margin="4">
+                            <TextBlock x:Name="LblTicketDetailHeader"
+                                       Text="Select a row above to inspect ticket ownership, target student, and access permissions."
+                                       FontSize="12.5"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock x:Name="LblTicketDetailParties"
+                                       Text=""
+                                       FontSize="12"
+                                       Margin="0,3,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock x:Name="LblTicketDetailAccess"
+                                       Text=""
+                                       FontSize="12"
+                                       Margin="0,3,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+                    </Expander>
                 </Grid>
             </Border>
         </Grid>
@@ -299,9 +319,10 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- left: [IconSidebarToggle] + [IconArrowLeft] + repo slug + subtle lock icon -->
+                    <!-- left: [IconSidebarToggle (when sidebar collapsed)] + [IconArrowLeft] + repo slug + subtle lock icon -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Style="{StaticResource IconButtonStyle}"
+                        <Button x:Name="BtnWorkspaceSidebarToggle"
+                                Style="{StaticResource IconButtonStyle}"
                                 Margin="0,0,4,0"
                                 ToolTip="Toggle Navigation Sidebar (Ctrl+B)"
                                 Click="BtnToggleSidebar_Click">
@@ -571,11 +592,11 @@
                 </Grid>
             </Grid>
 
-            <!-- ZONE D: TOGGLEABLE BOTTOM PANEL (210px tall when open, collapsed by default or toggled with Ctrl+J) -->
+            <!-- ZONE D: TOGGLEABLE BOTTOM PANEL (220px tall when open, toggled with Ctrl+J) -->
             <Border x:Name="BottomPanelBorder"
                     Grid.Row="2"
-                    Height="210"
-                    Visibility="Collapsed"
+                    Height="220"
+                    Visibility="Visible"
                     Background="{DynamicResource BgSurfaceBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="0,1,0,0">
@@ -597,6 +618,11 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="BtnPanelTabSpec"
+                                        Content="Task Spec"
+                                        Style="{StaticResource BottomPanelTabButtonStyle}"
+                                        Margin="0,0,4,0"
+                                        Click="BtnPanelTabSpec_Click" />
                                 <Button x:Name="BtnPanelTabCommits"
                                         Content="Commits &amp; Pushes"
                                         Style="{StaticResource BottomPanelTabButtonStyle}"
@@ -631,14 +657,50 @@
 
                     <!-- bottom panel tab contents -->
                     <Grid Grid.Row="1" Margin="8,6">
+                        <!-- TAB 0: TASK PROBLEM SPEC -->
+                        <Grid x:Name="PanelViewTaskSpecGrid" Visibility="Visible">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <WrapPanel Grid.Row="0" Margin="0,0,0,6">
+                                <Border Background="{DynamicResource BgElevatedBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                                    <TextBlock x:Name="LblSpecTitle" Text="Task Title" FontSize="11.5" FontWeight="Bold" />
+                                </Border>
+                                <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="7,2" Margin="0,0,6,4">
+                                    <TextBlock x:Name="LblSpecCourse" Text="Course: --" FontSize="11" FontFamily="Consolas" />
+                                </Border>
+                                <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="7,2" Margin="0,0,6,4">
+                                    <TextBlock x:Name="LblSpecTemplate" Text="Template: --" FontSize="11" FontFamily="Consolas" />
+                                </Border>
+                                <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="7,2" Margin="0,0,6,4">
+                                    <TextBlock x:Name="LblSpecMode" Text="Mode: --" FontSize="11" FontFamily="Consolas" />
+                                </Border>
+                                <Border Background="{DynamicResource BgCanvasBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3" Padding="7,2" Margin="0,0,0,4">
+                                    <TextBlock x:Name="LblSpecDeadline" Text="Deadline: --" FontSize="11" FontFamily="Consolas" />
+                                </Border>
+                            </WrapPanel>
+
+                            <TextBox x:Name="TxtSpecInstructions"
+                                     Grid.Row="1"
+                                     IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top"
+                                     FontSize="12"
+                                     Padding="8,6"
+                                     Background="{DynamicResource BgCanvasBrush}" />
+                        </Grid>
+
                         <!-- TAB 1: COMMITS & PUSHES (unified table) -->
-                        <DataGrid x:Name="GridUnifiedCommits" Visibility="Visible">
+                        <DataGrid x:Name="GridUnifiedCommits" Visibility="Collapsed">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="SHA" Binding="{Binding ShortSha}" Width="80" FontFamily="Consolas" FontWeight="SemiBold" />
-                                <DataGridTextColumn Header="Commit Message" Binding="{Binding CommitMessage}" Width="*" />
-                                <DataGridTextColumn Header="Author" Binding="{Binding AuthorName}" Width="140" />
-                                <DataGridTextColumn Header="Server Push Timestamp" Binding="{Binding TimestampText}" Width="150" FontFamily="Consolas" />
-                                <DataGridTextColumn Header="Timeliness" Binding="{Binding TimelinessText}" Width="95" FontWeight="Bold" />
+                                <DataGridTextColumn Header="SHA" Binding="{Binding ShortSha}" Width="85" FontFamily="Consolas" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Commit Message" Binding="{Binding CommitMessage}" Width="1.4*" />
+                                <DataGridTextColumn Header="Author" Binding="{Binding AuthorName}" Width="150" />
+                                <DataGridTextColumn Header="Server Push Timestamp" Binding="{Binding TimestampText}" Width="155" FontFamily="Consolas" />
+                                <DataGridTextColumn Header="Timeliness" Binding="{Binding TimelinessText}" Width="100" FontWeight="Bold" />
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -651,15 +713,16 @@
 
                             <DataGrid x:Name="GridComments" Grid.Row="0" Margin="0,0,0,6">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Author" Binding="{Binding AuthorDisplay}" Width="170" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="Comment" Binding="{Binding CommentBody}" Width="*" />
-                                    <DataGridTextColumn Header="Posted" Binding="{Binding CreatedAtText}" Width="130" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Author" Binding="{Binding AuthorDisplay}" Width="180" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="Comment" Binding="{Binding CommentBody}" Width="1.4*" />
+                                    <DataGridTextColumn Header="Posted" Binding="{Binding CreatedAtText}" Width="145" FontFamily="Consolas" />
                                 </DataGrid.Columns>
                             </DataGrid>
 
                             <Grid Grid.Row="1">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="TxtNewComment"
@@ -668,8 +731,16 @@
                                          Padding="6,3"
                                          Margin="0,0,6,0"
                                          ToolTip="Reply to discussion thread..." />
-                                <Button x:Name="BtnPostComment"
+                                <Button x:Name="BtnReplyComment"
                                         Grid.Column="1"
+                                        Content="Reply (@User)"
+                                        Padding="10,3"
+                                        FontSize="11.5"
+                                        Margin="0,0,6,0"
+                                        ToolTip="Insert @mention for the selected comment author"
+                                        Click="BtnReplyComment_Click" />
+                                <Button x:Name="BtnPostComment"
+                                        Grid.Column="2"
                                         Content="Post"
                                         Style="{StaticResource PrimaryButtonStyle}"
                                         Padding="12,3"
@@ -716,10 +787,10 @@
 
                             <DataGrid x:Name="GridRepoTeam" Grid.Row="1">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Student" Binding="{Binding FullName}" Width="170" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="115" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Role" Binding="{Binding TeamRole}" Width="120" />
-                                    <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="135" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Student" Binding="{Binding FullName}" Width="180" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="125" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Role" Binding="{Binding TeamRole}" Width="130" />
+                                    <DataGridTextColumn Header="Access Level" Binding="{Binding AccessLevel}" Width="145" FontFamily="Consolas" />
                                     <DataGridTextColumn Header="Status" Binding="{Binding ApprovalStatus}" Width="*" FontWeight="Bold" />
                                 </DataGrid.Columns>
                             </DataGrid>
