@@ -37,13 +37,10 @@ kanban
     [mock ups]@{ assigned: 'TBD' }
   [Opened Issues]
     [ui: winforms screen mockups]@{ assigned: 'TBD', ticket: '#22' }
-    [ui: desktop session and xampp health check]@{ assigned: 'Aldrin', ticket: '#23' }
     [ui: team and repo editor dialogs]@{ assigned: 'TBD', ticket: '#24' }
     [ui: login, register, student explorer]@{ assigned: 'TBD', ticket: '#12' }
     [ui: faculty admin, rubric, repo bin]@{ assigned: 'TBD', ticket: '#13' }
-    [desktop: core wiring and lan testing]@{ assigned: 'Aldrin', ticket: '#14' }
   [In Progress]
-    [Live LAN Smoke Test & Final Demo Prep]@{ assigned: 'Aldrin' }
   [Closed Issues]
     [desktop: winforms net10.0 scaffold]@{ assigned: 'Aldrin', ticket: '#1' }
     [db: mariadb schema and entity models]@{ assigned: 'Aldrin', ticket: '#3' }
@@ -61,6 +58,9 @@ kanban
     [desktop: student workspace control and coding interface]@{ assigned: 'Aldrin', ticket: '#33' }
     [desktop: faculty workspace, rubric grading, and repo bin]@{ assigned: 'Aldrin', ticket: '#35' }
     [desktop: migrate solution to .net 8 and rebuild ui in wpf with gruvbox theme]@{ assigned: 'Aldrin', ticket: '#37' }
+    [desktop: wire winforms client to core services and test lan git workflow]@{ assigned: 'Aldrin', ticket: '#14' }
+    [ui: desktop session and xampp health check]@{ assigned: 'Aldrin', ticket: '#23' }
+    [desktop: student workspace ui implementation and editor]@{ assigned: 'Aldrin', ticket: '#28' }
   [Done]
     [Project Skeleton & Desktop Scaffold]@{ assigned: 'Aldrin' }
     [Database Schema & Entity Models]@{ assigned: 'Aldrin' }
@@ -75,6 +75,7 @@ kanban
     [Student Workspace UI Implementation]@{ assigned: 'Aldrin' }
     [Faculty Admin & Grading UI Implementation]@{ assigned: 'Aldrin' }
     [WPF Gruvbox Workstation & .NET 8 LTS Migration]@{ assigned: 'Aldrin' }
+    [Live LAN Smoke Test & Final Defense Polish]@{ assigned: 'Aldrin' }
 ```
 
 ## Contribution Guide for Members

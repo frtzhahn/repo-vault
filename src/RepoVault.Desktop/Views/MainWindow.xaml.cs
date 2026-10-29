@@ -174,12 +174,12 @@ public partial class MainWindow : Window
             SeederResult seeded = await _session.Seeder.EnsureDemoSeededAsync(_session.ReposDirectory);
             if (seeded.ReposSeeded > 0)
             {
-                SetStatus($"Auto-initialized {seeded.ReposSeeded} demo repositories ({seeded.CommitsIndexed} commits indexed).");
+                SetStatus($"Initialized {seeded.ReposSeeded} storage repositories ({seeded.CommitsIndexed} commits indexed).");
             }
         }
         catch (Exception ex)
         {
-            SetStatus("Demo auto-check warning: " + ex.Message);
+            SetStatus("Storage sync warning: " + ex.Message);
         }
 
         if (WorkspaceHost.Content is StudentWorkspaceView sw)
@@ -380,11 +380,11 @@ public partial class MainWindow : Window
     private async void BtnSeedDemo_Click(object sender, RoutedEventArgs e)
     {
         BtnSeedDemo.IsEnabled = false;
-        SetStatus("Seeding and indexing classroom demo repositories...");
+        SetStatus("Synchronizing and indexing storage repositories...");
         try
         {
             SeederResult res = await _session.Seeder.SeedAllAsync(_session.ReposDirectory);
-            string summary = $"Seeded {res.ReposSeeded} repos, indexed {res.CommitsIndexed} commits.";
+            string summary = $"Synchronized {res.ReposSeeded} repos, indexed {res.CommitsIndexed} commits.";
             SetStatus(summary);
 
             if (WorkspaceHost.Content is StudentWorkspaceView sw)
@@ -399,8 +399,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SetStatus("Seed error: " + ex.Message);
-            MessageBox.Show(this, "Could not seed demo workspaces: " + ex.Message,
-                "Seed Demo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Could not synchronize storage repositories: " + ex.Message,
+                "Sync Storage", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {

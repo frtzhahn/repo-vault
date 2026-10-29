@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Repo Vault - Classroom Sign In"
         Width="520"
-        Height="560"
+        Height="460"
         MinWidth="460"
-        MinHeight="520"
+        MinHeight="440"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BgCanvasBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
@@ -61,42 +61,9 @@
                         Content="Sign In"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Height="36"
-                        Margin="0,0,0,16"
+                        Margin="0,0,0,12"
                         IsDefault="True"
                         Click="BtnLogin_Click" />
-
-                <Border Background="{DynamicResource BgCanvasBrush}"
-                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="12,10"
-                        Margin="0,0,0,14">
-                    <StackPanel>
-                        <TextBlock Text="Quick Classroom Demo Accounts"
-                                   FontSize="11.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextMutedBrush}"
-                                   Margin="0,0,0,6" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox x:Name="CboDemoAccount"
-                                      Grid.Column="0"
-                                      SelectedIndex="0">
-                                <ComboBoxItem Content="prof_santos (Faculty)" />
-                                <ComboBoxItem Content="frtzhahn (Student)" />
-                                <ComboBoxItem Content="sduites (Student)" />
-                            </ComboBox>
-                            <Button x:Name="BtnQuickFill"
-                                    Grid.Column="2"
-                                    Content="Quick Demo Login"
-                                    Click="BtnQuickFill_Click" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
 
                 <Button x:Name="BtnCreateAccount"
                         Content="Create Student Account"

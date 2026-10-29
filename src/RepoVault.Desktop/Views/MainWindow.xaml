@@ -250,7 +250,7 @@
                                     <Button x:Name="BtnSeedDemo"
                                             Grid.Column="2"
                                             Padding="6,4"
-                                            ToolTip="Seed or re-index classroom demo repositories"
+                                            ToolTip="Sync or re-index storage repositories"
                                             Click="BtnSeedDemo_Click">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Style="{StaticResource VectorIconPathStyle}"

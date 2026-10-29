@@ -20,6 +20,7 @@ public partial class LoginWindow : Window
         _session = session;
         InitializeComponent();
         UpdateThemeButtonLabel();
+        Loaded += (s, e) => TxtUsername.Focus();
     }
 
     private void BtnThemeToggle_Click(object sender, RoutedEventArgs e)
@@ -80,21 +81,6 @@ public partial class LoginWindow : Window
         }
     }
 
-    private void BtnQuickFill_Click(object sender, RoutedEventArgs e)
-    {
-        string raw = (CboDemoAccount.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? CboDemoAccount.Text;
-        string demo = raw.Split('(')[0].Trim();
-        if (demo.Length == 0)
-        {
-            return;
-        }
-
-        TxtUsername.Text = demo;
-        TxtPassword.Password = "Password123!";
-        ShowStatus("Demo credentials loaded for " + demo + ". Click Sign In to continue.", false);
-        BtnLogin.Focus();
-    }
-
     private void BtnCreateAccount_Click(object sender, RoutedEventArgs e)
     {
         var reg = new RegisterWindow(_session)
@@ -123,9 +109,7 @@ public partial class LoginWindow : Window
     private void SetBusy(bool busy)
     {
         BtnLogin.IsEnabled = !busy;
-        BtnQuickFill.IsEnabled = !busy;
         BtnCreateAccount.IsEnabled = !busy;
-        CboDemoAccount.IsEnabled = !busy;
         BtnLogin.Content = busy ? "Signing in..." : "Sign In";
     }
 }
