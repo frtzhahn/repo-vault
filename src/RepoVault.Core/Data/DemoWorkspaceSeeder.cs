@@ -224,7 +224,9 @@ public sealed class DemoWorkspaceSeeder
         {
             FileName = "git",
             WorkingDirectory = dir,
+            CreateNoWindow = true,
             UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };

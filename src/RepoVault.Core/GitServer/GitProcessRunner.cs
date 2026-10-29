@@ -13,7 +13,9 @@ public static class GitProcessRunner
         var psi = new ProcessStartInfo
         {
             FileName = "git",
+            CreateNoWindow = true,
             UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
