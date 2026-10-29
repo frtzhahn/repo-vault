@@ -17,6 +17,16 @@ public sealed class EvaluationService
         _db = db;
     }
 
+    public Task<(bool Ok, string Message, EvaluationRecord? Evaluation)> SubmitOrUpdateEvaluationAsync(
+        User actor, int repoId, int architectureScore, int functionalityScore,
+        int codeQualityScore, int documentationScore, string critiqueNotes,
+        bool lockRepository = true, CancellationToken ct = default)
+    {
+        return SaveEvaluationAsync(
+            actor, repoId, architectureScore, functionalityScore,
+            codeQualityScore, documentationScore, critiqueNotes, lockRepository, ct);
+    }
+
     public async Task<(bool Ok, string Message, EvaluationRecord? Evaluation)> SaveEvaluationAsync(
         User actor, int repoId, int architectureScore, int functionalityScore,
         int codeQualityScore, int documentationScore, string critiqueNotes,

@@ -1,4 +1,6 @@
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using RepoVault.Desktop.AppState;
 using RepoVault.Desktop.Views;
@@ -57,6 +59,7 @@ public partial class App : Application
             SetBrush("BgCanvasBrush", "#32302F");
             SetBrush("BgSurfaceBrush", "#3C3836");
             SetBrush("BgElevatedBrush", "#504945");
+            SetBrush("BgHoverBrush", "#665C54");
             SetBrush("BorderSubtleBrush", "#665C54");
             SetBrush("TextPrimaryBrush", "#EBDBB2");
             SetBrush("TextMutedBrush", "#A89984");
@@ -72,7 +75,8 @@ public partial class App : Application
             // gruvbox light
             SetBrush("BgCanvasBrush", "#EBDBB2");
             SetBrush("BgSurfaceBrush", "#F2E5BC");
-            SetBrush("BgElevatedBrush", "#D5C4A1");
+            SetBrush("BgElevatedBrush", "#FBF1C7");
+            SetBrush("BgHoverBrush", "#D5C4A1");
             SetBrush("BorderSubtleBrush", "#BDAE93");
             SetBrush("TextPrimaryBrush", "#3C3836");
             SetBrush("TextMutedBrush", "#665C54");
@@ -83,6 +87,69 @@ public partial class App : Application
             SetBrush("AccentBadgeBrush", "#B16286");
             SetBrush("TextOnAccentBrush", "#FBF1C7");
         }
+    }
+
+    public static string GetFileIconGlyph(string pathOrName, bool isFolder)
+    {
+        if (isFolder)
+        {
+            return "\uF07B";
+        }
+
+        string ext = Path.GetExtension(pathOrName).ToLowerInvariant();
+        return ext switch
+        {
+            ".cs" or ".csproj" or ".sln" or ".slnx" => "\uE77F",
+            ".java" or ".jar" => "\uE738",
+            ".c" or ".h" => "\uE61E",
+            ".cpp" or ".hpp" or ".cc" => "\uE61D",
+            ".js" or ".mjs" => "\uE781",
+            ".ts" or ".tsx" => "\uE628",
+            ".py" => "\uE73C",
+            ".sql" => "\uE706",
+            ".md" or ".markdown" => "\uE73E",
+            ".html" or ".htm" => "\uE736",
+            ".css" => "\uE749",
+            ".json" or ".xml" or ".xaml" or ".yml" or ".yaml" => "\uE60B",
+            _ => "\uF15B",
+        };
+    }
+
+    public static StackPanel CreateExplorerNodeHeader(string label, string pathOrName, bool isFolder)
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var iconBlock = new TextBlock
+        {
+            Text = GetFileIconGlyph(pathOrName, isFolder),
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0),
+        };
+        if (Current?.TryFindResource("NerdFontFamily") is FontFamily nf)
+        {
+            iconBlock.FontFamily = nf;
+        }
+
+        iconBlock.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            isFolder ? "AccentPrimaryBrush" : "TextMutedBrush");
+
+        var textBlock = new TextBlock
+        {
+            Text = label,
+            FontSize = 12.5,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        textBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
+
+        panel.Children.Add(iconBlock);
+        panel.Children.Add(textBlock);
+        return panel;
     }
 
     private static void SetBrush(string key, string hex)

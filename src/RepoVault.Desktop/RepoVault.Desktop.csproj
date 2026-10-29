@@ -4,6 +4,10 @@
     <ProjectReference Include="..\RepoVault.Core\RepoVault.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\SymbolsNerdFontMono-Regular.ttf" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>

@@ -1,0 +1,118 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- bundled nerd font symbols resource for file explorer devicons -->
+    <FontFamily x:Key="NerdFontFamily">pack://application:,,,/Assets/Fonts/#Symbols Nerd Font Mono</FontFamily>
+
+    <!-- 16x16 lucide / codicon stroke geometries -->
+    <StreamGeometry x:Key="IconSidebarToggle">M 2,3 L 14,3 L 14,13 L 2,13 Z M 6,3 L 6,13</StreamGeometry>
+    <StreamGeometry x:Key="IconBottomPanelToggle">M 2,3 L 14,3 L 14,13 L 2,13 Z M 2,10 L 14,10</StreamGeometry>
+    <StreamGeometry x:Key="IconExplorerToggle">M 2,4 L 6,4 L 7.5,5.5 L 14,5.5 L 14,13 L 2,13 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconArrowLeft">M 13,8 L 3,8 M 7,4 L 3,8 L 7,12</StreamGeometry>
+    <StreamGeometry x:Key="IconArrowRight">M 3,8 L 13,8 M 9,4 L 13,8 L 9,12</StreamGeometry>
+    <StreamGeometry x:Key="IconPlus">M 8,3 L 8,13 M 3,8 L 13,8</StreamGeometry>
+    <StreamGeometry x:Key="IconCopy">M 6,6 L 13,6 L 13,13 L 6,13 Z M 10,6 L 10,3 L 3,3 L 3,10 L 6,10</StreamGeometry>
+    <StreamGeometry x:Key="IconCheck">M 3,8.5 L 6.5,12 L 13,4.5</StreamGeometry>
+    <StreamGeometry x:Key="IconGitCommit">M 1,8 L 5,8 M 11,8 L 15,8 M 5,8 A 3,3 0 1 1 11,8 A 3,3 0 1 1 5,8</StreamGeometry>
+    <StreamGeometry x:Key="IconGitBranch">M 4,3 A 2,2 0 1 1 4,7 A 2,2 0 1 1 4,3 M 4,9 A 2,2 0 1 1 4,13 A 2,2 0 1 1 4,9 M 12,4 A 2,2 0 1 1 12,8 A 2,2 0 1 1 12,4 M 4,7 L 4,9 M 12,8 C 12,10.5 4,8.5 4,11</StreamGeometry>
+    <StreamGeometry x:Key="IconLock">M 3.5,7.5 L 12.5,7.5 L 12.5,13.5 L 3.5,13.5 Z M 5.5,7.5 L 5.5,5 A 2.5,2.5 0 0 1 10.5,5 L 10.5,7.5</StreamGeometry>
+    <StreamGeometry x:Key="IconUnlock">M 3.5,7.5 L 12.5,7.5 L 12.5,13.5 L 3.5,13.5 Z M 5.5,7.5 L 5.5,5 A 2.5,2.5 0 0 1 10.5,4</StreamGeometry>
+    <StreamGeometry x:Key="IconServer">M 2,3 L 14,3 L 14,7 L 2,7 Z M 2,9 L 14,9 L 14,13 L 2,13 Z M 4.5,5 L 5.5,5 M 4.5,11 L 5.5,11</StreamGeometry>
+    <StreamGeometry x:Key="IconTheme">M 8,2 A 6,6 0 1 0 14,8 A 4.5,4.5 0 1 1 8,2 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconTrash">M 3,4.5 L 13,4.5 M 6,4.5 L 6,2.5 L 10,2.5 L 10,4.5 M 4.5,4.5 L 5,13.5 L 11,13.5 L 11.5,4.5</StreamGeometry>
+    <StreamGeometry x:Key="IconLogout">M 6,2.5 L 3,2.5 L 3,13.5 L 6,13.5 M 10,5 L 13.5,8 L 10,11 M 6,8 L 13.5,8</StreamGeometry>
+    <StreamGeometry x:Key="IconChevronDown">M 4,6 L 8,10 L 12,6</StreamGeometry>
+    <StreamGeometry x:Key="IconChevronRight">M 6,4 L 10,8 L 6,12</StreamGeometry>
+    <StreamGeometry x:Key="IconRefresh">M 13,4 L 13,7.5 L 9.5,7.5 M 13,7.5 A 5.5,5.5 0 1 0 12.5,11</StreamGeometry>
+    <StreamGeometry x:Key="IconFile">M 4,2 L 10,2 L 13,5 L 13,14 L 4,14 Z M 10,2 L 10,5 L 13,5</StreamGeometry>
+
+    <!-- reusable vector path styles bound to dynamic theme brushes -->
+    <Style x:Key="VectorIconPathStyle" TargetType="Path">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Stroke" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="StrokeThickness" Value="1.4" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="MutedVectorIconPathStyle" TargetType="Path" BasedOn="{StaticResource VectorIconPathStyle}">
+        <Setter Property="Stroke" Value="{DynamicResource TextMutedBrush}" />
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+    </Style>
+
+    <!-- compact icon-only toolbar button style (vs code header / explorer bar) -->
+    <Style x:Key="IconButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="5,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgHoverBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- flat vs code bottom panel tab button style -->
+    <Style x:Key="BottomPanelTabButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="TabBd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

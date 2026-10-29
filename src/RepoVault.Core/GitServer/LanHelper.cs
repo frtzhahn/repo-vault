@@ -7,6 +7,8 @@ namespace RepoVault.Core.GitServer;
 
 public static class LanHelper
 {
+    public static string GetLanIpAddress() => GetPreferredLanIpv4Address();
+
     public static string GetPreferredLanIpv4Address()
     {
         string fallback = "127.0.0.1";

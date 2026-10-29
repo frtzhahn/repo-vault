@@ -287,4 +287,99 @@ public sealed class SeederTests : IAsyncLifetime
             "Program.cs", Encoding.UTF8.GetBytes("var x = 1;\n"));
         Assert.Equal(1, one.SourceLines);
     }
+
+    [Fact]
+    public async Task CommitFileInApp_RespectsRbacAndUpdatesCommitLogMetricsAndPushLedger()
+    {
+        string tag = Tag();
+        var auth = new AuthService(_db);
+        var (fok, _, faculty) = await auth.RegisterUserAsync(
+            "IDF2" + tag, "uF2" + tag, "Passw0rd!" + tag,
+            "Prof " + tag, "uF2" + tag + "@example.com", UserRole.Faculty);
+        Assert.True(fok);
+
+        var (ook, _, owner) = await auth.RegisterUserAsync(
+            "IDO" + tag, "uO" + tag, "Passw0rd!" + tag,
+            "Owner " + tag, "uO" + tag + "@example.com", UserRole.Student);
+        Assert.True(ook);
+
+        var (gok, _, groupmate) = await auth.RegisterUserAsync(
+            "IDG" + tag, "uG" + tag, "Passw0rd!" + tag,
+            "Group " + tag, "uG" + tag + "@example.com", UserRole.Student);
+        Assert.True(gok);
+
+        var (pok, _, peer) = await auth.RegisterUserAsync(
+            "IDP" + tag, "uP" + tag, "Passw0rd!" + tag,
+            "Peer " + tag, "uP" + tag + "@example.com", UserRole.Student);
+        Assert.True(pok);
+
+        var courses = new CourseService(_db);
+        var (cok, _, course) = await courses.CreateCourseAsync(
+            faculty!, "C2" + tag, "Course2 " + tag, "CSD", "2026-1st");
+        Assert.True(cok);
+
+        string root = TempDir("repovault-inapp-", tag);
+        var catalog = new RepoService(_db, root);
+        var (tok, _, task) = await courses.CreateCodingTaskAsync(
+            faculty!, course!.CourseId, "Task " + tag, "Build helper",
+            "csharp", DateTime.UtcNow.AddDays(7), true, 3);
+        Assert.True(tok);
+
+        var (sok, smsg, repo) = await catalog.StartCodingTaskAsync(owner!, task!.TaskId);
+        Assert.True(sok, smsg);
+
+        var contributors = new ContributorService(_db);
+        var (aok, amsg) = await contributors.AssignContributorAsync(
+            faculty!, repo!.RepoId, groupmate!.UserId, "Developer");
+        Assert.True(aok, amsg);
+
+        var (pvok, pvmsg) = await contributors.GrantPeerViewerAsync(
+            owner!, repo.RepoId, peer!.UserId);
+        Assert.True(pvok, pvmsg);
+
+        // owner edits existing file
+        var (c1Ok, c1Msg) = await catalog.CommitFileInAppAsync(
+            owner!, repo.RepoId, "Program.cs",
+            "namespace InApp;\npublic static class Program { public static void Main() {} }\n",
+            "update Program.cs from in-app editor");
+        Assert.True(c1Ok, c1Msg);
+
+        // approved groupmate creates a new file
+        var (c2Ok, c2Msg) = await catalog.CommitFileInAppAsync(
+            groupmate!, repo.RepoId, "src/Helper.cs",
+            "namespace InApp;\npublic static class Helper { public static int Add(int a, int b) => a + b; }\n",
+            "add src/Helper.cs from groupmate");
+        Assert.True(c2Ok, c2Msg);
+
+        // peer viewer and faculty cannot commit in-app
+        var (pOk, _) = await catalog.CommitFileInAppAsync(
+            peer!, repo.RepoId, "Program.cs", "// unauthorized\n", "peer attempt");
+        Assert.False(pOk);
+
+        var (fOk, _) = await catalog.CommitFileInAppAsync(
+            faculty!, repo.RepoId, "Program.cs", "// faculty\n", "faculty attempt");
+        Assert.False(fOk);
+
+        // verify file tree, blob contents, commit logs, push ledger, and metrics
+        RepositoryRecord? updated = await catalog.GetByIdAsync(repo.RepoId);
+        Assert.NotNull(updated);
+        Assert.Equal(3, updated!.TotalFiles);
+        Assert.True(updated.SourceLines > 0);
+
+        var browser = new RepoBrowser();
+        RepoBlobContent helperBlob = await browser.ReadFileBlobAsync(updated.BareRepoDiskPath, "src/Helper.cs");
+        Assert.Contains("Add(int a, int b)", helperBlob.TextContent);
+
+        var commits = await catalog.ListCommitLogsAsync(repo.RepoId);
+        Assert.True(commits.Count >= 3);
+
+        var pushes = await catalog.ListPushLedgerViewAsync(repo.RepoId);
+        Assert.True(pushes.Count >= 2);
+
+        // locked repository rejects further in-app commits
+        await catalog.SetLockStateAsync(faculty!, repo.RepoId, true);
+        var (lockOk, _) = await catalog.CommitFileInAppAsync(
+            owner!, repo.RepoId, "Program.cs", "// after lock\n", "locked commit");
+        Assert.False(lockOk);
+    }
 }
