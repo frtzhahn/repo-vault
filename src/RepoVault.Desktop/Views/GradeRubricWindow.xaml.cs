@@ -63,12 +63,18 @@ public partial class GradeRubricWindow : Window
 
     private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (SldArch == null || SldFunc == null || SldQual == null || SldDoc == null || LblTotalScore == null)
+        {
+            return;
+        }
+
         UpdateScoreLabels();
     }
 
     private void UpdateScoreLabels()
     {
-        if (LblTotalScore is null)
+        if (SldArch == null || SldFunc == null || SldQual == null || SldDoc == null || LblTotalScore == null ||
+            LblValArch == null || LblValFunc == null || LblValQual == null || LblValDoc == null)
         {
             return;
         }
@@ -110,7 +116,7 @@ public partial class GradeRubricWindow : Window
         BtnSaveRubric.IsEnabled = false;
         try
         {
-            var (ok, message, _) = await _session.Evaluations.SaveEvaluationAsync(
+            var (ok, message, _) = await _session.Evaluations.SubmitOrUpdateEvaluationAsync(
                 actor, _repo.RepoId, arch, func, qual, doc, notes, lockRepo);
 
             if (!ok)
