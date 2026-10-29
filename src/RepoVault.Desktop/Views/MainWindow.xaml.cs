@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using System.Net;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -28,8 +28,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         UpdateThemeButtonLabel();
 
-        string lanIp = LanHelper.GetPreferredLanIpv4Address();
-        LblLanInfo.Text = $"{lanIp}:{_session.ServerPort}";
+        _session.ServerPushCompleted += Server_PushCompleted;
+        _session.ServerStateChanged += Session_ServerStateChanged;
 
         var user = _session.CurrentUser;
         if (user is not null)
@@ -46,6 +46,7 @@ public partial class MainWindow : Window
                 var fw = new FacultyWorkspaceView(
                     _session, SetStatus, ToggleSidebar, SetSidebarCollapsed,
                     UpdateFacultyNavHighlight, UpdatePendingTicketsBadge);
+                fw.SetSidebarOpenState(true);
                 WorkspaceHost.Content = fw;
                 HighlightNavButton(BtnFacultyNavCourses);
             }
@@ -60,6 +61,7 @@ public partial class MainWindow : Window
                 var sw = new StudentWorkspaceView(
                     _session, SetStatus, ToggleSidebar, SetSidebarCollapsed,
                     UpdateStudentNavHighlight);
+                sw.SetSidebarOpenState(true);
                 WorkspaceHost.Content = sw;
                 HighlightNavButton(BtnStudentNavWorkspaces);
             }
@@ -84,13 +86,23 @@ public partial class MainWindow : Window
     public void SetSidebarCollapsed(bool collapsed)
     {
         LeftSidebarBorder.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        bool isSidebarOpen = !collapsed;
+
+        if (WorkspaceHost.Content is StudentWorkspaceView sw)
+        {
+            sw.SetSidebarOpenState(isSidebarOpen);
+        }
+        else if (WorkspaceHost.Content is FacultyWorkspaceView fw)
+        {
+            fw.SetSidebarOpenState(isSidebarOpen);
+        }
     }
 
     public void UpdatePendingTicketsBadge(int pendingCount)
     {
-        BtnFacultyNavTickets.Content = pendingCount > 0
-            ? $"3. Groupmate Tickets ({pendingCount})"
-            : "3. Groupmate Tickets";
+        LblFacultyNavTicketsText.Text = pendingCount > 0
+            ? $"Groupmate Tickets ({pendingCount})"
+            : "Groupmate Tickets";
     }
 
     private void UpdateStudentNavHighlight(int pageIndex)
@@ -149,6 +161,14 @@ public partial class MainWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        if (DesignerProperties.GetIsInDesignMode(this))
+        {
+            return;
+        }
+
+        // auto-start the in-process git http server immediately on login
+        await StartServerAsync(silentOnError: true);
+
         try
         {
             SeederResult seeded = await _session.Seeder.EnsureDemoSeededAsync(_session.ReposDirectory);
@@ -273,96 +293,54 @@ public partial class MainWindow : Window
 
     private async void BtnServerToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (_session.RunningServer is { IsRunning: true })
+        if (_session.Server is { IsRunning: true })
         {
             await StopServerAsync();
         }
         else
         {
-            await StartServerAsync();
+            await StartServerAsync(silentOnError: false);
         }
     }
 
-    private async Task StartServerAsync()
+    private async Task StartServerAsync(bool silentOnError)
     {
-        if (_session.RunningServer is { IsRunning: true })
+        var (ok, loopbackFallback, errorMsg) = await _session.EnsureServerRunningAsync();
+        UpdateServerUi();
+
+        if (!ok)
         {
+            if (!silentOnError)
+            {
+                MessageBox.Show(this,
+                    $"Could not start Git HTTP Server on port {_session.ServerPort}: {errorMsg}\n\n" +
+                    "If the port is in use, close the other process. For LAN binding, run scripts/enable-lan-port.bat as Administrator.",
+                    "Git Server", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                SetStatus("Git Server could not bind port " + _session.ServerPort + ".");
+            }
+
             return;
         }
 
-        int port = _session.ServerPort;
-        string lanIp = LanHelper.GetPreferredLanIpv4Address();
-        bool loopbackFallback = false;
-
-        GitHttpServer server = CreateServer($"http://+:{port}/");
-        try
-        {
-            await server.StartAsync();
-        }
-        catch (HttpListenerException)
-        {
-            server.Dispose();
-            loopbackFallback = true;
-
-            // wildcard binding requires urlacl rule; fall back to loopback
-            server = CreateServer($"http://127.0.0.1:{port}/");
-            try
-            {
-                await server.StartAsync();
-            }
-            catch (HttpListenerException ex)
-            {
-                server.Dispose();
-                MessageBox.Show(this,
-                    $"Could not start Git HTTP Server on port {port}: {ex.Message}\n\n" +
-                    "If the port is in use, close the other process. For LAN binding, run scripts/enable-lan-port.bat as Administrator.",
-                    "Git Server", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-        }
-
-        server.PushCompleted += Server_PushCompleted;
-        _session.RunningServer = server;
-        UpdateServerUi();
-
-        if (loopbackFallback)
-        {
-            SetStatus($"Git Server running on http://127.0.0.1:{port}/");
-        }
-        else
-        {
-            SetStatus($"Git Server started on http://{lanIp}:{port}/");
-        }
+        string hostDisplay = _session.GetActiveServerHostDisplay();
+        SetStatus(loopbackFallback
+            ? $"Git Server running on http://{hostDisplay}/"
+            : $"Git Server started on http://{hostDisplay}/");
     }
 
     private async Task StopServerAsync()
     {
-        GitHttpServer? server = _session.RunningServer;
-        if (server is null)
-        {
-            return;
-        }
-
-        server.PushCompleted -= Server_PushCompleted;
-        _session.RunningServer = null;
-        try
-        {
-            await server.StopAsync();
-        }
-        finally
-        {
-            server.Dispose();
-        }
-
+        await _session.StopServerAsync();
         UpdateServerUi();
         SetStatus("Git HTTP Server stopped.");
     }
 
-    private GitHttpServer CreateServer(string prefix)
+    private void Session_ServerStateChanged(object? sender, EventArgs e)
     {
-        return new GitHttpServer(
-            _session.Db, _session.Auth, _session.Rbac, _session.Repos,
-            _session.ServerPort, prefix);
+        _ = Dispatcher.InvokeAsync(UpdateServerUi);
     }
 
     private void Server_PushCompleted(object? sender, PushCompletedEventArgs e)
@@ -386,12 +364,13 @@ public partial class MainWindow : Window
 
     private void UpdateServerUi()
     {
-        bool running = _session.RunningServer is { IsRunning: true };
-        string host = LanHelper.GetPreferredLanIpv4Address();
+        bool running = _session.Server is { IsRunning: true };
+        string hostDisplay = _session.GetActiveServerHostDisplay();
 
+        LblLanInfo.Text = hostDisplay;
         LblServerToggleText.Text = running ? "Stop Git Server" : "Start Git Server";
         LblServerStatus.Text = running
-            ? $"Running ({host}:{_session.ServerPort})"
+            ? $"Running ({hostDisplay})"
             : "Git Server: Stopped";
         ServerDot.Fill = running
             ? (Brush)FindResource("AccentSuccessBrush")
@@ -439,20 +418,14 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        GitHttpServer? server = _session.RunningServer;
-        if (server is not null)
+        _session.ServerPushCompleted -= Server_PushCompleted;
+        _session.ServerStateChanged -= Session_ServerStateChanged;
+        try
         {
-            server.PushCompleted -= Server_PushCompleted;
-            _session.RunningServer = null;
-            try
-            {
-                server.StopAsync().GetAwaiter().GetResult();
-            }
-            catch
-            {
-            }
-
-            server.Dispose();
+            _session.StopServerAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
         }
     }
 }
